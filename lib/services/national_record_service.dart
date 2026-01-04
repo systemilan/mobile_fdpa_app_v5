@@ -264,8 +264,13 @@ class NationalRecordService {
   /// Descargar PDF de récords nacionales
   Future<String> downloadRecordsPdf() async {
     try {
-      // Solicitar permisos de almacenamiento
-      if (!kIsWeb && Platform.isAndroid) {
+      // Verificar si estamos en web
+      if (kIsWeb) {
+        throw Exception('La descarga de PDF no está disponible en la versión web. Por favor, usa la aplicación móvil.');
+      }
+
+      // Solicitar permisos de almacenamiento solo en Android
+      if (Platform.isAndroid) {
         var status = await Permission.storage.status;
         if (!status.isGranted) {
           status = await Permission.storage.request();

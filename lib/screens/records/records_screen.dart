@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../services/national_record_service.dart';
 import '../../models/national_record.dart';
 
@@ -618,39 +619,40 @@ class _RecordsScreenState extends State<RecordsScreen>
           ),
         ),
         const SizedBox(width: 15),
-        // Botón de descarga
-        GestureDetector(
-          onTap: _downloadPdf,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
+        // Botón de descarga - solo visible en móvil
+        if (!kIsWeb)
+          GestureDetector(
+            onTap: _downloadPdf,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(
-                  Icons.download,
-                  color: Colors.white,
-                  size: 16,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'PDF',
-                  style: TextStyle(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(
+                    Icons.download,
                     color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    size: 16,
                   ),
-                ),
-              ],
+                  SizedBox(width: 8),
+                  Text(
+                    'PDF',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }
