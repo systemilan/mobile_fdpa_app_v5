@@ -1,0 +1,929 @@
+import 'package:flutter/material.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  
+  // Controladores para animaciones escalonadas
+  late AnimationController _headerController;
+  late AnimationController _resultsController;
+  late AnimationController _statsController;
+  late AnimationController _eventsController;
+  
+  late Animation<double> _headerFadeAnimation;
+  late Animation<Offset> _headerSlideAnimation;
+  late Animation<double> _resultsFadeAnimation;
+  late Animation<Offset> _resultsSlideAnimation;
+  late Animation<double> _statsFadeAnimation;
+  late Animation<Offset> _statsSlideAnimation;
+  late Animation<double> _eventsFadeAnimation;
+  late Animation<Offset> _eventsSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _fadeController = AnimationController(
+        duration: const Duration(milliseconds: 1000),
+        vsync: this,
+      );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Inicializar controladores de animaciones escalonadas
+    _headerController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _resultsController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _statsController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _eventsController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    // Configurar animaciones escalonadas
+    _headerFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _headerController, curve: Curves.easeOut),
+    );
+    _headerSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(parent: _headerController, curve: Curves.easeOutBack),
+    );
+
+    _resultsFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _resultsController, curve: Curves.easeOut),
+    );
+    _resultsSlideAnimation = Tween<Offset>(begin: const Offset(-0.5, 0), end: Offset.zero).animate(
+      CurvedAnimation(parent: _resultsController, curve: Curves.easeOutBack),
+    );
+
+    _statsFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _statsController, curve: Curves.easeOut),
+    );
+    _statsSlideAnimation = Tween<Offset>(begin: const Offset(0.5, 0), end: Offset.zero).animate(
+      CurvedAnimation(parent: _statsController, curve: Curves.easeOutBack),
+    );
+
+    _eventsFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _eventsController, curve: Curves.easeOut),
+    );
+    _eventsSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(parent: _eventsController, curve: Curves.easeOutBack),
+    );
+
+      _fadeController.forward();
+      _slideController.forward();
+      
+      // Iniciar animaciones escalonadas con delays
+      _startStaggeredAnimations();
+    } catch (e) {
+      debugPrint('Error inicializando animaciones: $e');
+      // Fallback: inicializar controladores básicos
+      _fadeController = AnimationController(
+        duration: const Duration(milliseconds: 1000),
+        vsync: this,
+      );
+      _slideController = AnimationController(
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      );
+    }
+  }
+
+  void _startStaggeredAnimations() {
+    // Header aparece primero después de 300ms
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _headerController.forward();
+    });
+    
+    // Resultados aparecen después de 600ms
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _resultsController.forward();
+    });
+    
+    // Stats aparecen después de 900ms
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) _statsController.forward();
+    });
+    
+    // Eventos aparecen después de 1200ms
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) _eventsController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      _fadeController.dispose();
+      _slideController.dispose();
+      _headerController.dispose();
+      _resultsController.dispose();
+      _statsController.dispose();
+      _eventsController.dispose();
+    } catch (e) {
+      debugPrint('Error disposing controllers: $e');
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF040512),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  FadeTransition(
+                    opacity: _headerFadeAnimation,
+                    child: SlideTransition(
+                      position: _headerSlideAnimation,
+                      child: _buildHeader(),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  FadeTransition(
+                    opacity: _resultsFadeAnimation,
+                    child: SlideTransition(
+                      position: _resultsSlideAnimation,
+                      child: _buildLastResults(),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  FadeTransition(
+                    opacity: _statsFadeAnimation,
+                    child: SlideTransition(
+                      position: _statsSlideAnimation,
+                      child: _buildStatsSections(),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  FadeTransition(
+                    opacity: _eventsFadeAnimation,
+                    child: SlideTransition(
+                      position: _eventsSlideAnimation,
+                      child: _buildUpcomingEvents(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/fdpa_logo.png',
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Text(
+              'FDPA',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 15),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Federación Deportiva',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              'Peruana de Atletismo',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLastResults() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Últimos resultados',
+              style: TextStyle(
+                color: Color(0xFFE74C3C),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ver todos los resultados'),
+                    backgroundColor: Color(0xFFE74C3C),
+                  ),
+                );
+              },
+              child: const Text(
+                'Ver todos',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _buildResultCard(
+                '16 de marzo 2025',
+                'Campeonato nacional\nde mayores',
+                'VIDENA - Perú',
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: _buildResultCard(
+                '10 de marzo 2025',
+                'Campeonato infantil',
+                'VIDENA - Perú',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultCard(String date, String title, String location) {
+    return GestureDetector(
+      onTap: () {
+        _showResultDetails(context, title, date, location);
+      },
+      child: Container(
+        height: 150,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1D1F28),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              date,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.left,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    location,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 20,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(2),
+                    color: const Color(0xFFE74C3C).withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsSections() {
+    return Column(
+      children: [
+        _buildStatsCard(
+          'Marcas Mínimas',
+          'Lista actualizada el 20 de febrero de 2025',
+          Icons.timer,
+          () => _showStatsDetails('Marcas Mínimas'),
+        ),
+        const SizedBox(height: 15),
+        _buildStatsCard(
+          'Records Nacionales',
+          'Lista actualizada el 20 de febrero de 2025',
+          Icons.emoji_events,
+          () => _showStatsDetails('Records Nacionales'),
+        ),
+        const SizedBox(height: 15),
+        _buildStatsCard(
+          'Ranking Nacional',
+          'Lista actualizada el 20 de febrero de 2025',
+          Icons.leaderboard,
+          () => _showStatsDetails('Ranking Nacional'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsCard(String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1D1F28),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE74C3C).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Icon(
+                icon,
+                color: const Color(0xFFE74C3C),
+                size: 30,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingEvents() {
+    final now = DateTime.now();
+    final upcomingEvents = _generateUpcomingEvents(now);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Próximos eventos',
+              style: TextStyle(
+                color: Color(0xFFE74C3C),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                _showCalendar(context);
+              },
+              child: const Text(
+                'Abrir calendario',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: upcomingEvents.length,
+            itemBuilder: (context, index) {
+              final event = upcomingEvents[index];
+              return _buildEventCard(
+                event['day']!,
+                event['month']!,
+                event['year']!,
+                index == 0,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildNextEvent(),
+      ],
+    );
+  }
+
+  List<Map<String, String>> _generateUpcomingEvents(DateTime currentDate) {
+    final events = <Map<String, String>>[];
+    final monthNames = [
+      'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.',
+      'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.'
+    ];
+
+    final eventIntervals = [7, 14, 21, 35, 42, 56];
+    
+    for (int i = 0; i < eventIntervals.length; i++) {
+      final eventDate = currentDate.add(Duration(days: eventIntervals[i]));
+      events.add({
+        'day': eventDate.day.toString().padLeft(2, '0'),
+        'month': monthNames[eventDate.month - 1],
+        'year': eventDate.year.toString(),
+      });
+    }
+
+    return events;
+  }
+
+  Widget _buildEventCard(String day, String month, String year, bool isNext) {
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Evento del $day de $month $year'),
+            backgroundColor: const Color(0xFFE74C3C),
+          ),
+        );
+      },
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.only(right: 15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: isNext ? const Color(0xFFE74C3C) : Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              day,
+              style: TextStyle(
+                color: isNext ? Colors.white : const Color(0xFFE74C3C),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              month,
+              style: TextStyle(
+                color: isNext ? Colors.white : const Color(0xFFE74C3C),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              year,
+              style: TextStyle(
+                color: isNext ? Colors.white70 : Colors.black54,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextEvent() {
+    final now = DateTime.now();
+    final nextEventDate = now.add(const Duration(days: 7));
+    final monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    
+    final dayNumber = nextEventDate.day.toString();
+    final monthName = monthNames[nextEventDate.month - 1];
+    
+    return GestureDetector(
+      onTap: () {
+        _showEventDetails(context);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1D1F28),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Siguiente campeonato',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'I Control Evaluativo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$dayNumber de',
+                  style: const TextStyle(
+                    color: Color(0xFFE74C3C),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  monthName,
+                  style: const TextStyle(
+                    color: Color(0xFFE74C3C),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResultDetails(BuildContext context, String title, String date, String location) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1D1F28),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              date,
+              style: const TextStyle(
+                color: Color(0xFFE74C3C),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              location,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE74C3C),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Ver Resultados Completos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    );
+  }
+
+  void _showStatsDetails(String title) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1D1F28),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Aquí se mostrarían los detalles de $title con listas actualizadas y estadísticas completas.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cerrar',
+              style: TextStyle(color: Color(0xFFE74C3C)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCalendar(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2328),
+        title: const Text(
+          'Calendario Completo',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Aquí se abriría el calendario completo con todos los eventos programados para la temporada.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cerrar',
+              style: TextStyle(color: Color(0xFFE74C3C)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEventDetails(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1D1F28),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'I Control Evaluativo',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              '18 de Marzo, 2025',
+              style: TextStyle(
+                color: Color(0xFFE74C3C),
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 15),
+            const Text(
+              'Primer control evaluativo de la temporada. Participarán atletas de todas las categorías.',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      side: const BorderSide(color: Color(0xFFE74C3C)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Más Info',
+                      style: TextStyle(
+                        color: Color(0xFFE74C3C),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE74C3C),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Inscribirse',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    );
+  }
+}

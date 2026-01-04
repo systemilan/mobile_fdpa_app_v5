@@ -1,0 +1,410 @@
+-- public.fdpa_app_categories definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_categories;
+
+CREATE TABLE public.fdpa_app_categories (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	"ageMin" int4 NOT NULL,
+	"ageMax" int4 NULL,
+	CONSTRAINT "PK_40e4895f3b356e7b6bf01ef582f" PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_app_combined_events definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_combined_events;
+
+CREATE TABLE public.fdpa_app_combined_events (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	"longNameEnglish" varchar NULL,
+	CONSTRAINT "PK_958e7a36899ba291653e382a556" PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_app_genders definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_genders;
+
+CREATE TABLE public.fdpa_app_genders (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	CONSTRAINT "PK_358fcde7edb300512d501ba21ad" PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_app_jornadas definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_jornadas;
+
+CREATE TABLE public.fdpa_app_jornadas (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	CONSTRAINT "PK_82fda056f97e439afd65f86a4f5" PRIMARY KEY (id),
+	CONSTRAINT "UQ_6f6b809d3d0a289849c0f329d12" UNIQUE ("shortName")
+);
+
+
+-- public.fdpa_app_modules definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_modules;
+
+CREATE TABLE public.fdpa_app_modules (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"name" varchar NOT NULL,
+	description varchar NOT NULL,
+	icon varchar NOT NULL,
+	route varchar NOT NULL,
+	"isActive" bool DEFAULT true NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_c9bdc9334691374762ef1a06f5c" PRIMARY KEY (id),
+	CONSTRAINT "UQ_f5e44eed6ebbfb04b9b0ee35b22" UNIQUE (name)
+);
+
+
+-- public.fdpa_app_roles definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_roles;
+
+CREATE TABLE public.fdpa_app_roles (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"name" varchar NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_b177b86bd190f0809dd3bd32f52" PRIMARY KEY (id),
+	CONSTRAINT "UQ_b8bdafd6e13ba0537248fa67a4d" UNIQUE (name)
+);
+
+
+-- public.fdpa_app_tests definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_tests;
+
+CREATE TABLE public.fdpa_app_tests (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	official_name_spanish varchar NOT NULL,
+	common_name_spanish varchar NOT NULL,
+	"type" varchar NOT NULL,
+	input_format varchar NOT NULL,
+	official_name_english varchar NULL,
+	lynx_abbreviation varchar NULL,
+	measures_wind bool DEFAULT false NOT NULL,
+	CONSTRAINT "PK_5012e04180c19d18ceb94c9cdc8" PRIMARY KEY (id)
+);
+
+
+-- public.typeorm_metadata definition
+
+-- Drop table
+
+-- DROP TABLE public.typeorm_metadata;
+
+CREATE TABLE public.typeorm_metadata (
+	"type" varchar NOT NULL,
+	"database" varchar NULL,
+	"schema" varchar NULL,
+	"table" varchar NULL,
+	"name" varchar NULL,
+	value text NULL
+);
+
+
+-- public.fdpa_app_combined_event_tests definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_combined_event_tests;
+
+CREATE TABLE public.fdpa_app_combined_event_tests (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	id_combined_event uuid NOT NULL,
+	id_category uuid NOT NULL,
+	id_gender uuid NOT NULL,
+	id_test uuid NOT NULL,
+	CONSTRAINT "PK_2e4dd22299d6a2509dc7723be1a" PRIMARY KEY (id),
+	CONSTRAINT "FK_5e77f298aee4747ac9dd104b5ba" FOREIGN KEY (id_combined_event) REFERENCES public.fdpa_app_combined_events(id),
+	CONSTRAINT "FK_7b3b783217c457fdfaa86e91372" FOREIGN KEY (id_test) REFERENCES public.fdpa_app_tests(id),
+	CONSTRAINT "FK_d049eb138238d4c32e20d508b12" FOREIGN KEY (id_category) REFERENCES public.fdpa_app_categories(id),
+	CONSTRAINT "FK_f631c2ac4651d13706d90751ebc" FOREIGN KEY (id_gender) REFERENCES public.fdpa_app_genders(id)
+);
+
+
+-- public.fdpa_app_ubigeo definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_ubigeo;
+
+CREATE TABLE public.fdpa_app_ubigeo (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"name" varchar NOT NULL,
+	"type" varchar NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"parentId" uuid NULL,
+	"isoCode" varchar NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_5a19dcde011187802de5daf7acb" PRIMARY KEY (id),
+	CONSTRAINT "FK_48b8f6049b4473f3017eefb5e3f" FOREIGN KEY ("parentId") REFERENCES public.fdpa_app_ubigeo(id)
+);
+
+
+-- public.fdpa_app_users definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_users;
+
+CREATE TABLE public.fdpa_app_users (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	username varchar NOT NULL,
+	email varchar NOT NULL,
+	"password" varchar NOT NULL,
+	"roleId" uuid NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_7dc049eb29ca4bcba498b14e569" PRIMARY KEY (id),
+	CONSTRAINT "UQ_0bfa6da00503a8cd670fcdacffe" UNIQUE (email),
+	CONSTRAINT "UQ_b2336c597171d75b923b1cb689e" UNIQUE (username),
+	CONSTRAINT "FK_6041b020fb961d00d7af83619b3" FOREIGN KEY ("roleId") REFERENCES public.fdpa_app_roles(id)
+);
+
+
+-- public.fdpa_app_user_module_permissions definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_user_module_permissions;
+
+CREATE TABLE public.fdpa_app_user_module_permissions (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"canCreate" bool DEFAULT false NOT NULL,
+	"canRead" bool DEFAULT false NOT NULL,
+	"canUpdate" bool DEFAULT false NOT NULL,
+	"canDelete" bool DEFAULT false NOT NULL,
+	"userId" uuid NULL,
+	"moduleId" uuid NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_d6c492b18b31b1128bb198a8cae" PRIMARY KEY (id),
+	CONSTRAINT "FK_a502d8f15bf402739e6f61b4d44" FOREIGN KEY ("userId") REFERENCES public.fdpa_app_users(id),
+	CONSTRAINT "FK_c5731023fdd3f8363184df815db" FOREIGN KEY ("moduleId") REFERENCES public.fdpa_app_modules(id)
+);
+
+
+-- public.fdpa_app_stadiums definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_stadiums;
+
+CREATE TABLE public.fdpa_app_stadiums (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	address varchar NOT NULL,
+	description varchar NULL,
+	"districtId" uuid NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_7965ccd8476bcb0dd7c8132faf5" PRIMARY KEY (id),
+	CONSTRAINT "UQ_b94b456036f20a11cb1a14b1a4e" UNIQUE ("shortName"),
+	CONSTRAINT "FK_4c3c1bc11ffa5a831f1bdd85184" FOREIGN KEY ("districtId") REFERENCES public.fdpa_app_ubigeo(id)
+);
+
+
+-- public.fdpa_app_events definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_events;
+
+CREATE TABLE public.fdpa_app_events (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"shortName" varchar NOT NULL,
+	"longName" varchar NOT NULL,
+	"dateStart" date NOT NULL,
+	"dateEnd" date NOT NULL,
+	"stadiumId" uuid NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	CONSTRAINT "PK_0469341490edf8f7ea570da01a4" PRIMARY KEY (id),
+	CONSTRAINT "UQ_cf83bd73ddd6be9a39216777421" UNIQUE ("shortName"),
+	CONSTRAINT "FK_02e5739d31fbd905488bbf4c046" FOREIGN KEY ("stadiumId") REFERENCES public.fdpa_app_stadiums(id)
+);
+
+
+-- public.fdpa_app_event_jornadas definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_event_jornadas;
+
+CREATE TABLE public.fdpa_app_event_jornadas (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"date" date NOT NULL,
+	"eventId" uuid NULL,
+	"jornadaId" uuid NULL,
+	CONSTRAINT "PK_62c89422fbe6496da1d3e6e86fd" PRIMARY KEY (id),
+	CONSTRAINT "FK_556b6220d86da14581b3ec82c70" FOREIGN KEY ("eventId") REFERENCES public.fdpa_app_events(id) ON DELETE CASCADE,
+	CONSTRAINT "FK_b1e5989a3a2f8b1e37f495aced1" FOREIGN KEY ("jornadaId") REFERENCES public.fdpa_app_jornadas(id) ON DELETE CASCADE
+);
+
+
+-- public.fdpa_app_event_tests definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_event_tests;
+
+CREATE TABLE public.fdpa_app_event_tests (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"time" time NULL,
+	"eventId" uuid NULL,
+	"testId" uuid NULL,
+	"combinedEventId" uuid NULL,
+	"jornadaId" uuid NULL,
+	CONSTRAINT "PK_46cdf584b8c7a4feb7fbf402cdd" PRIMARY KEY (id),
+	CONSTRAINT "FK_5bcdb374613cc1362b9d393cad4" FOREIGN KEY ("jornadaId") REFERENCES public.fdpa_app_jornadas(id) ON DELETE CASCADE,
+	CONSTRAINT "FK_89219640b17de38a445b8dd4924" FOREIGN KEY ("combinedEventId") REFERENCES public.fdpa_app_combined_events(id) ON DELETE SET NULL,
+	CONSTRAINT "FK_95b09522d630abae53716cfc9ed" FOREIGN KEY ("testId") REFERENCES public.fdpa_app_tests(id) ON DELETE CASCADE,
+	CONSTRAINT "FK_e0f3fc63b7e101ae2671215394d" FOREIGN KEY ("eventId") REFERENCES public.fdpa_app_events(id) ON DELETE CASCADE
+);
+
+
+-- public.fdpa_app_event_test_categories definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_event_test_categories;
+
+CREATE TABLE public.fdpa_app_event_test_categories (
+	"eventTestId" uuid NOT NULL,
+	"categoryId" uuid NOT NULL,
+	CONSTRAINT "PK_2b08dc0f19796ec720d74801d38" PRIMARY KEY ("eventTestId", "categoryId"),
+	CONSTRAINT "FK_282fc34092834bcb97777c42dbc" FOREIGN KEY ("categoryId") REFERENCES public.fdpa_app_categories(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT "FK_d082e1edfefc0648be3e675d39c" FOREIGN KEY ("eventTestId") REFERENCES public.fdpa_app_event_tests(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX "IDX_282fc34092834bcb97777c42db" ON public.fdpa_app_event_test_categories USING btree ("categoryId");
+CREATE INDEX "IDX_d082e1edfefc0648be3e675d39" ON public.fdpa_app_event_test_categories USING btree ("eventTestId");
+
+
+-- public.fdpa_app_event_test_genders definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_event_test_genders;
+
+CREATE TABLE public.fdpa_app_event_test_genders (
+	"eventTestId" uuid NOT NULL,
+	"genderId" uuid NOT NULL,
+	CONSTRAINT "PK_e2d645fc3d27020660ba706e2d3" PRIMARY KEY ("eventTestId", "genderId"),
+	CONSTRAINT "FK_0e9220ccd12a42096c8004c597b" FOREIGN KEY ("genderId") REFERENCES public.fdpa_app_genders(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT "FK_c42e8c0f7446dc4a159090ebe18" FOREIGN KEY ("eventTestId") REFERENCES public.fdpa_app_event_tests(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX "IDX_0e9220ccd12a42096c8004c597" ON public.fdpa_app_event_test_genders USING btree ("genderId");
+CREATE INDEX "IDX_c42e8c0f7446dc4a159090ebe1" ON public.fdpa_app_event_test_genders USING btree ("eventTestId");
+
+
+-- public.fdpa_app_series definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_series;
+
+CREATE TABLE public.fdpa_app_series (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"name" varchar NOT NULL,
+	"eventTestId" uuid NULL,
+	wind varchar NULL,
+	CONSTRAINT "PK_0b5596f52bda6871ba3f75a6679" PRIMARY KEY (id),
+	CONSTRAINT "FK_f4a5dcf440c6701fab3b24a7aed" FOREIGN KEY ("eventTestId") REFERENCES public.fdpa_app_event_tests(id) ON DELETE CASCADE
+);
+
+
+-- public.fdpa_app_lif_data definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_app_lif_data;
+
+CREATE TABLE public.fdpa_app_lif_data (
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL,
+	status bool DEFAULT true NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	"athleteId" varchar NULL,
+	lane int4 NULL,
+	"name" varchar NULL,
+	team varchar NULL,
+	"time" float8 NULL,
+	"positionAthlete" varchar NULL,
+	attempts _text NULL,
+	winds _text NULL,
+	"eventType" varchar NULL,
+	country varchar NULL,
+	"birthDate" date NULL,
+	"typeDocument" varchar NULL,
+	"documentNumber" varchar NULL,
+	"seriesId" uuid NULL,
+	CONSTRAINT "PK_4f5e954774b4b83baf630e48008" PRIMARY KEY (id),
+	CONSTRAINT "FK_cf945994be48bbc0359f9bfeccf" FOREIGN KEY ("seriesId") REFERENCES public.fdpa_app_series(id) ON DELETE CASCADE
+);

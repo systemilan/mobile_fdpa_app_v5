@@ -1,0 +1,1094 @@
+-- public.data_categories_test definition
+
+-- Drop table
+
+-- DROP TABLE public.data_categories_test;
+
+CREATE TABLE public.data_categories_test (
+	id bigserial NOT NULL,
+	code varchar NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_categories_test_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_list_gender definition
+
+-- Drop table
+
+-- DROP TABLE public.data_list_gender;
+
+CREATE TABLE public.data_list_gender (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_list_gender_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_list_inspectors definition
+
+-- Drop table
+
+-- DROP TABLE public.data_list_inspectors;
+
+CREATE TABLE public.data_list_inspectors (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_list_inspectors_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_list_organizers definition
+
+-- Drop table
+
+-- DROP TABLE public.data_list_organizers;
+
+CREATE TABLE public.data_list_organizers (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_list_organizers_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_loc_pais definition
+
+-- Drop table
+
+-- DROP TABLE public.data_loc_pais;
+
+CREATE TABLE public.data_loc_pais (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	code_iso varchar NULL,
+	"name" varchar NULL,
+	name_iso varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	flag varchar NULL,
+	CONSTRAINT data_loc_pais_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_results definition
+
+-- Drop table
+
+-- DROP TABLE public.data_results;
+
+CREATE TABLE public.data_results (
+	id bigserial NOT NULL,
+	id_serie int8 NULL,
+	camp1 varchar NULL,
+	camp2 varchar NULL,
+	camp3 varchar NULL,
+	camp4 varchar NULL,
+	camp5 varchar NULL,
+	camp6 varchar NULL,
+	camp7 varchar NULL,
+	camp8 varchar NULL,
+	camp9 varchar NULL,
+	camp10 varchar NULL,
+	camp11 varchar NULL,
+	camp12 varchar NULL,
+	camp13 varchar NULL,
+	camp14 varchar NULL,
+	camp15 varchar NULL,
+	camp16 varchar NULL,
+	camp17 varchar NULL,
+	camp18 varchar NULL,
+	camp19 varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	result1 numeric(10, 2) NULL,
+	result2 numeric(10, 2) NULL,
+	result3 numeric(10, 2) NULL,
+	viento1 varchar(255) NULL,
+	viento2 varchar(255) NULL,
+	viento3 varchar(255) NULL,
+	result4 numeric(10, 2) NULL,
+	result5 numeric(10, 2) NULL,
+	result6 numeric(10, 2) NULL,
+	viento4 varchar(255) NULL,
+	viento5 varchar(255) NULL,
+	viento6 varchar(255) NULL,
+	code varchar(255) NULL,
+	bol1 int4 NULL,
+	bol2 int4 NULL,
+	bol3 int4 NULL,
+	bol4 int4 NULL,
+	bol5 int4 NULL,
+	bol6 int4 NULL,
+	CONSTRAINT data_results_code_key UNIQUE (code),
+	CONSTRAINT data_results_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_time definition
+
+-- Drop table
+
+-- DROP TABLE public.data_time;
+
+CREATE TABLE public.data_time (
+	id bigserial NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int2 NULL,
+	CONSTRAINT data_time_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_turn definition
+
+-- Drop table
+
+-- DROP TABLE public.data_turn;
+
+CREATE TABLE public.data_turn (
+	id bigserial NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int2 NULL,
+	CONSTRAINT data_turn_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_type_documents definition
+
+-- Drop table
+
+-- DROP TABLE public.data_type_documents;
+
+CREATE TABLE public.data_type_documents (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 DEFAULT 1 NULL,
+	CONSTRAINT data_type_documents_pkey PRIMARY KEY (id)
+);
+
+
+-- public.data_type_test definition
+
+-- Drop table
+
+-- DROP TABLE public.data_type_test;
+
+CREATE TABLE public.data_type_test (
+	id bigserial NOT NULL,
+	code varchar NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_type_test_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_associations definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_associations;
+
+CREATE TABLE public.fdpa_associations (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_associations_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_categories definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_categories;
+
+CREATE TABLE public.fdpa_categories (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_categories_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_course_nivel definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_course_nivel;
+
+CREATE TABLE public.fdpa_course_nivel (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_course_nivel_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_loc_pais definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_loc_pais;
+
+CREATE TABLE public.fdpa_loc_pais (
+	id serial4 NOT NULL,
+	code varchar NOT NULL,
+	iso varchar NOT NULL,
+	short_name varchar NOT NULL,
+	long_name varchar NOT NULL,
+	maps varchar NOT NULL,
+	description varchar NOT NULL,
+	status int4 NOT NULL,
+	created timestamp(6) DEFAULT now() NOT NULL,
+	updated timestamp(6) DEFAULT now() NOT NULL,
+	route_flag varchar(255) NULL,
+	CONSTRAINT "PK_df6680bf9074dab28ef69105029" PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_paths definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_paths;
+
+CREATE TABLE public.fdpa_paths (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	clasification int4 NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	original_name varchar(255) NULL,
+	"size" float8 NULL,
+	"type" varchar(255) NULL,
+	"extension" varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	route varchar(1000) NULL,
+	CONSTRAINT fdpa_paths_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_size_pole_pants definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_size_pole_pants;
+
+CREATE TABLE public.fdpa_size_pole_pants (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_size_pole_pants_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_time definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_time;
+
+CREATE TABLE public.fdpa_time (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_time_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_turn definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_turn;
+
+CREATE TABLE public.fdpa_turn (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_turn_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_blood definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_blood;
+
+CREATE TABLE public.fdpa_type_blood (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_type_blood_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_civil definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_civil;
+
+CREATE TABLE public.fdpa_type_civil (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_type_civil_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_documents definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_documents;
+
+CREATE TABLE public.fdpa_type_documents (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_type_documents_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_gender definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_gender;
+
+CREATE TABLE public.fdpa_type_gender (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	"type" int4 NULL,
+	CONSTRAINT fdpa_type_gender_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_roles definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_roles;
+
+CREATE TABLE public.fdpa_type_roles (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_type_roles_pkey PRIMARY KEY (id)
+);
+
+
+-- public.fdpa_type_segments_test definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_segments_test;
+
+CREATE TABLE public.fdpa_type_segments_test (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL
+);
+
+
+-- public.fdpa_type_test_joint definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_test_joint;
+
+CREATE TABLE public.fdpa_type_test_joint (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_type_test_joint_pkey PRIMARY KEY (id)
+);
+
+
+-- public.typeorm_metadata definition
+
+-- Drop table
+
+-- DROP TABLE public.typeorm_metadata;
+
+CREATE TABLE public.typeorm_metadata (
+	"type" varchar NOT NULL,
+	"database" varchar NULL,
+	"schema" varchar NULL,
+	"table" varchar NULL,
+	"name" varchar NULL,
+	value text NULL
+);
+
+
+-- public.data_events definition
+
+-- Drop table
+
+-- DROP TABLE public.data_events;
+
+CREATE TABLE public.data_events (
+	id bigserial NOT NULL,
+	code int4 NULL,
+	"name" varchar NULL,
+	date_time_begin timestamp(6) NULL,
+	date_time_end timestamp(6) NULL,
+	"location" varchar NULL,
+	id_pais int8 NULL,
+	id_organizer int8 NULL,
+	id_inspector int8 NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_events_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK_data_events_data_list_inspectors" FOREIGN KEY (id_inspector) REFERENCES public.data_list_inspectors(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT "FK_data_events_data_list_organizers" FOREIGN KEY (id_organizer) REFERENCES public.data_list_organizers(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT "FK_data_events_data_loc_pais" FOREIGN KEY (id_pais) REFERENCES public.data_loc_pais(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+
+-- public.data_list_test definition
+
+-- Drop table
+
+-- DROP TABLE public.data_list_test;
+
+CREATE TABLE public.data_list_test (
+	id bigserial NOT NULL,
+	code varchar NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	id_type_test int8 NULL,
+	category varchar(255) NULL,
+	type_test_category int8 NULL,
+	CONSTRAINT data_list_test_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK_data_list_test_data_type_test" FOREIGN KEY (id_type_test) REFERENCES public.data_type_test(id)
+);
+
+
+-- public.data_peoples definition
+
+-- Drop table
+
+-- DROP TABLE public.data_peoples;
+
+CREATE TABLE public.data_peoples (
+	id bigserial NOT NULL,
+	id_type_document int8 NULL,
+	"document" varchar NULL,
+	names varchar NULL,
+	last_name varchar NULL,
+	last_mother_name varchar NULL,
+	address varchar NULL,
+	gender int4 NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_peoples_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK_data_peoples_data_type_documents" FOREIGN KEY (id_type_document) REFERENCES public.data_type_documents(id)
+);
+
+
+-- public.data_test_main definition
+
+-- Drop table
+
+-- DROP TABLE public.data_test_main;
+
+CREATE TABLE public.data_test_main (
+	id bigserial NOT NULL,
+	id_event int8 NULL,
+	id_test int8 NULL,
+	id_category int8 NULL,
+	id_gender int8 NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	id_time int8 NULL,
+	id_turn int8 NULL,
+	CONSTRAINT data_test_main_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK_data_test_main_data_categories_test" FOREIGN KEY (id_category) REFERENCES public.data_categories_test(id),
+	CONSTRAINT "FK_data_test_main_data_events" FOREIGN KEY (id_event) REFERENCES public.data_events(id),
+	CONSTRAINT "FK_data_test_main_data_list_gender" FOREIGN KEY (id_gender) REFERENCES public.data_list_gender(id),
+	CONSTRAINT "FK_data_test_main_data_list_test" FOREIGN KEY (id_test) REFERENCES public.data_list_test(id),
+	CONSTRAINT "FK_data_test_main_data_time" FOREIGN KEY (id_time) REFERENCES public.data_time(id),
+	CONSTRAINT "FK_data_test_main_data_turn" FOREIGN KEY (id_turn) REFERENCES public.data_turn(id)
+);
+
+
+-- public.data_users definition
+
+-- Drop table
+
+-- DROP TABLE public.data_users;
+
+CREATE TABLE public.data_users (
+	id bigserial NOT NULL,
+	id_people int8 NULL,
+	"user" varchar NULL,
+	"password" varchar NULL,
+	id_role int8 NULL,
+	"security" int4 NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	CONSTRAINT data_users_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK__data_peoples" FOREIGN KEY (id_people) REFERENCES public.data_peoples(id)
+);
+
+
+-- public.fdpa_loc_pais_type_documents definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_loc_pais_type_documents;
+
+CREATE TABLE public.fdpa_loc_pais_type_documents (
+	id serial4 NOT NULL,
+	id_pais int4 NULL,
+	id_type_document int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_loc_pais_type_documents_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_loc_pais_type_documents_id_pais_fkey FOREIGN KEY (id_pais) REFERENCES public.fdpa_loc_pais(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_loc_pais_type_documents_id_type_document_fkey FOREIGN KEY (id_type_document) REFERENCES public.fdpa_type_documents(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_loc_state definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_loc_state;
+
+CREATE TABLE public.fdpa_loc_state (
+	id serial4 NOT NULL,
+	code varchar NOT NULL,
+	"name" varchar NOT NULL,
+	description varchar NOT NULL,
+	status int4 NOT NULL,
+	created timestamp(6) DEFAULT now() NOT NULL,
+	updated timestamp(6) DEFAULT now() NOT NULL,
+	id_pais int4 NULL,
+	CONSTRAINT "PK_c394194a23a2d6c2b1fe88681d8" PRIMARY KEY (id),
+	CONSTRAINT "FK_072429dfd06ed4e098ccf367dd9" FOREIGN KEY (id_pais) REFERENCES public.fdpa_loc_pais(id)
+);
+
+
+-- public.data_serie_main definition
+
+-- Drop table
+
+-- DROP TABLE public.data_serie_main;
+
+CREATE TABLE public.data_serie_main (
+	id bigserial NOT NULL,
+	code varchar NULL,
+	"name" varchar NULL,
+	description varchar NULL,
+	created_at timestamp(6) NULL,
+	updated_at timestamp(6) NULL,
+	status int4 NULL,
+	id_test int8 NULL,
+	wind varchar(255) NULL,
+	CONSTRAINT data_serie_main_pkey PRIMARY KEY (id),
+	CONSTRAINT "FK_data_serie_main_data_test_main" FOREIGN KEY (id_test) REFERENCES public.data_test_main(id)
+);
+
+
+-- public.fdpa_loc_city definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_loc_city;
+
+CREATE TABLE public.fdpa_loc_city (
+	id int4 DEFAULT nextval('fdpa_city_id_seq'::regclass) NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	id_state int4 NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_city_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_city_id_state_fkey FOREIGN KEY (id_state) REFERENCES public.fdpa_loc_state(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_loc_town definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_loc_town;
+
+CREATE TABLE public.fdpa_loc_town (
+	id int4 DEFAULT nextval('fdpa_town_id_seq'::regclass) NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	id_city int4 NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_town_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_town_id_city_fkey FOREIGN KEY (id_city) REFERENCES public.fdpa_loc_city(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_organization definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_organization;
+
+CREATE TABLE public.fdpa_organization (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	id_type_document int4 NULL,
+	"document" int8 NULL,
+	"name" varchar(255) NULL,
+	short_name varchar(255) NULL,
+	long_name varchar(255) NULL,
+	description varchar(255) NULL,
+	id_pais int4 NULL,
+	id_state int4 NULL,
+	id_city int4 NULL,
+	id_town int4 NULL,
+	address varchar(255) NULL,
+	phone varchar(255) NULL,
+	mail varchar(255) NULL,
+	id_logo int4 NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_main int4 NULL,
+	CONSTRAINT fdpa_organization_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_organization_id_city_fkey FOREIGN KEY (id_city) REFERENCES public.fdpa_loc_city(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_logo_fkey FOREIGN KEY (id_logo) REFERENCES public.fdpa_paths(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_main_fkey FOREIGN KEY (id_main) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_pais_fkey FOREIGN KEY (id_pais) REFERENCES public.fdpa_loc_pais(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_state_fkey FOREIGN KEY (id_state) REFERENCES public.fdpa_loc_state(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_town_fkey FOREIGN KEY (id_town) REFERENCES public.fdpa_loc_town(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_organization_id_type_document_fkey FOREIGN KEY (id_type_document) REFERENCES public.fdpa_type_documents(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_peoples definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_peoples;
+
+CREATE TABLE public.fdpa_peoples (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	id_type_document int4 NULL,
+	"document" varchar(255) NULL,
+	names varchar(255) NULL,
+	last_name varchar(255) NULL,
+	mother_last_name varchar(255) NULL,
+	id_gender int4 NULL,
+	id_civil int4 NULL,
+	birthday date NULL,
+	id_country_bird int4 NULL,
+	occupation varchar(255) NULL,
+	id_blood_type int4 NULL,
+	id_pais_location int4 NULL,
+	id_state_location int4 NULL,
+	id_city_location int4 NULL,
+	id_town_location int4 NULL,
+	address_location varchar(255) NULL,
+	height float8 NULL,
+	weight float8 NULL,
+	footwear float8 NULL,
+	pole_size int4 NULL,
+	pants_size int4 NULL,
+	mail varchar(255) NULL,
+	phone varchar(255) NULL,
+	celular varchar(255) NULL,
+	id_apto_medic int4 NULL,
+	date_apto_medic date NULL,
+	names_medic varchar(255) NULL,
+	id_course_nivel int4 NULL,
+	course_date date NULL,
+	course_location varchar(255) NULL,
+	course_test varchar(255) NULL,
+	status varchar(255) NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_organization int4 NULL,
+	id_photo int4 NULL,
+	CONSTRAINT fdpa_peoples_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_peoples_id_apto_medic_fkey FOREIGN KEY (id_apto_medic) REFERENCES public.fdpa_paths(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_blood_type_fkey FOREIGN KEY (id_blood_type) REFERENCES public.fdpa_type_blood(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_city_location_fkey FOREIGN KEY (id_city_location) REFERENCES public.fdpa_loc_city(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_civil_fkey FOREIGN KEY (id_civil) REFERENCES public.fdpa_type_civil(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_country_bird_fkey FOREIGN KEY (id_country_bird) REFERENCES public.fdpa_loc_pais(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_course_nivel_fkey FOREIGN KEY (id_course_nivel) REFERENCES public.fdpa_course_nivel(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_gender_fkey FOREIGN KEY (id_gender) REFERENCES public.fdpa_type_gender(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_organization_fkey FOREIGN KEY (id_organization) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_pais_location_fkey FOREIGN KEY (id_pais_location) REFERENCES public.fdpa_loc_pais(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_photo_fkey FOREIGN KEY (id_photo) REFERENCES public.fdpa_paths(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_state_location_fkey FOREIGN KEY (id_state_location) REFERENCES public.fdpa_loc_state(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_id_town_location_fkey FOREIGN KEY (id_town_location) REFERENCES public.fdpa_loc_town(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_pants_size_fkey FOREIGN KEY (pants_size) REFERENCES public.fdpa_size_pole_pants(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_pole_size_fkey FOREIGN KEY (pole_size) REFERENCES public.fdpa_size_pole_pants(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_peoples_type_document_fkey FOREIGN KEY (id_type_document) REFERENCES public.fdpa_type_documents(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+CREATE UNIQUE INDEX fdpa_peoples_code_idx ON public.fdpa_peoples USING btree (code);
+
+
+-- public.fdpa_people_type_role definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_people_type_role;
+
+CREATE TABLE public.fdpa_people_type_role (
+	id serial4 NOT NULL,
+	id_people int4 NULL,
+	id_role int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_people_type_role_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_people_type_role_id_people_fkey FOREIGN KEY (id_people) REFERENCES public.fdpa_peoples(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_people_type_role_id_role_fkey FOREIGN KEY (id_role) REFERENCES public.fdpa_type_roles(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_test definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_test;
+
+CREATE TABLE public.fdpa_test (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_organization int4 NULL,
+	type_test_option int4 NULL,
+	CONSTRAINT fdpa_test_code_key UNIQUE (code),
+	CONSTRAINT fdpa_test_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_test_id_organization_fkey FOREIGN KEY (id_organization) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_tokens definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_tokens;
+
+CREATE TABLE public.fdpa_tokens (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	"token" varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_organization int4 NULL,
+	CONSTRAINT fdpa_tokens_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_tokens_id_organization_fkey FOREIGN KEY (id_organization) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_type_test definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_type_test;
+
+CREATE TABLE public.fdpa_type_test (
+	id serial4 NOT NULL,
+	code varchar(255) NULL,
+	"name" varchar(255) NULL,
+	description varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_organization int4 NULL,
+	CONSTRAINT fdpa_type_test_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_type_test_id_organization_fkey FOREIGN KEY (id_organization) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_users definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_users;
+
+CREATE TABLE public.fdpa_users (
+	id serial4 NOT NULL,
+	code varchar NOT NULL,
+	username varchar NOT NULL,
+	"password" varchar NOT NULL,
+	email varchar NOT NULL,
+	created timestamp(6) DEFAULT now() NULL,
+	updated timestamp(6) DEFAULT now() NULL,
+	status int4 NULL,
+	id_people int4 NULL,
+	CONSTRAINT "PK_b3ff4ef843ef5c7d4863c23578c" PRIMARY KEY (id),
+	CONSTRAINT "UQ_3685a25574f79afeafa20671147" UNIQUE (email),
+	CONSTRAINT "UQ_80a9127bc3c3a3839b0d8b657db" UNIQUE (code),
+	CONSTRAINT "UQ_8bb545504fcfcc177c67809acf4" UNIQUE (username),
+	CONSTRAINT fdpa_users_id_people_fkey FOREIGN KEY (id_people) REFERENCES public.fdpa_peoples(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.data_results_m2 definition
+
+-- Drop table
+
+-- DROP TABLE public.data_results_m2;
+
+CREATE TABLE public.data_results_m2 (
+	id bigserial NOT NULL,
+	id_result int8 NULL,
+	"size" numeric(10, 2) NULL,
+	r1 int4 NULL,
+	r2 int4 NULL,
+	r3 int4 NULL,
+	status int4 NULL,
+	created_at timestamp(0) NULL,
+	updated_at timestamp(0) NULL,
+	id_serie int8 NULL,
+	"validate" varchar NOT NULL,
+	CONSTRAINT data_results_m2_pkey PRIMARY KEY (id),
+	CONSTRAINT "validate" UNIQUE (validate),
+	CONSTRAINT "FK_data_results_m2_data_results" FOREIGN KEY (id_result) REFERENCES public.data_results(id),
+	CONSTRAINT "FK_data_results_m2_data_serie_main" FOREIGN KEY (id_serie) REFERENCES public.data_serie_main(id)
+);
+
+
+-- public.fdpa_events definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_events;
+
+CREATE TABLE public.fdpa_events (
+	id serial4 NOT NULL,
+	"name" varchar(255) NULL,
+	long_name varchar(255) NULL,
+	date_begin date NULL,
+	date_end date NULL,
+	"location" varchar(255) NULL,
+	date_end_inscription date NULL,
+	id_association int4 NULL,
+	quantity_test_people int4 NULL,
+	quantity_test_team int4 NULL,
+	name_people_tech varchar(255) NULL,
+	email_people_tech varchar(255) NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_organization int4 NULL,
+	id_inspector int4 NULL,
+	code varchar(255) NULL,
+	details varchar(1000) NULL,
+	id_pais_location int4 NULL,
+	CONSTRAINT fdpa_events_code_key UNIQUE (code),
+	CONSTRAINT fdpa_events_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_events_id_association_fkey FOREIGN KEY (id_association) REFERENCES public.fdpa_associations(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_events_id_inspector_fkey FOREIGN KEY (id_inspector) REFERENCES public.fdpa_peoples(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_events_id_organization_fkey FOREIGN KEY (id_organization) REFERENCES public.fdpa_organization(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_events_id_pais_location_fkey FOREIGN KEY (id_pais_location) REFERENCES public.fdpa_loc_pais(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_event_test definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_event_test;
+
+CREATE TABLE public.fdpa_event_test (
+	id serial4 NOT NULL,
+	id_event int4 NULL,
+	id_test_segmented int4 NULL,
+	id_time int4 NULL,
+	id_turn int4 NULL,
+	id_category int4 NULL,
+	id_gender int4 NULL,
+	"date" date NULL,
+	"time" time(6) NULL,
+	status_results int4 NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	id_test int4 NULL,
+	CONSTRAINT fdpa_event_test_id_category_fkey FOREIGN KEY (id_category) REFERENCES public.fdpa_categories(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_event_test_id_event_fkey FOREIGN KEY (id_event) REFERENCES public.fdpa_events(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_event_test_id_gender_fkey FOREIGN KEY (id_gender) REFERENCES public.fdpa_type_gender(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_event_test_id_test_fkey FOREIGN KEY (id_test) REFERENCES public.fdpa_test(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_event_test_id_time_fkey FOREIGN KEY (id_time) REFERENCES public.fdpa_time(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_event_test_id_turn_fkey FOREIGN KEY (id_turn) REFERENCES public.fdpa_turn(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+
+
+-- public.fdpa_league definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_league;
+
+CREATE TABLE public.fdpa_league (
+	id serial4 NOT NULL,
+	code varchar NULL,
+	"name" varchar NULL,
+	acronym varchar NULL,
+	id_pais int4 NULL,
+	id_state int4 NULL,
+	id_city int4 NULL,
+	id_town int4 NULL,
+	address varchar NULL,
+	phone varchar NULL,
+	email varchar NULL,
+	website varchar NULL,
+	"password" varchar NULL,
+	president_name varchar NULL,
+	president_email varchar NULL,
+	president_phone varchar NULL,
+	secretary_name varchar NULL,
+	secretary_email varchar NULL,
+	secretary_phone varchar NULL,
+	responsible_name varchar NULL,
+	responsible_email varchar NULL,
+	responsible_phone varchar NULL,
+	id_photo int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	status int4 NULL,
+	id_organization int4 NULL,
+	CONSTRAINT fdpa_league_acronym_key UNIQUE (acronym),
+	CONSTRAINT fdpa_league_name UNIQUE (name),
+	CONSTRAINT fdpa_league_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_league_id_city_fkey FOREIGN KEY (id_city) REFERENCES public.fdpa_loc_city(id),
+	CONSTRAINT fdpa_league_id_pais_fkey FOREIGN KEY (id_pais) REFERENCES public.fdpa_loc_pais(id),
+	CONSTRAINT fdpa_league_id_photo_fkey FOREIGN KEY (id_photo) REFERENCES public.fdpa_paths(id),
+	CONSTRAINT fdpa_league_id_state_fkey FOREIGN KEY (id_state) REFERENCES public.fdpa_loc_state(id),
+	CONSTRAINT fdpa_league_id_town_fkey FOREIGN KEY (id_town) REFERENCES public.fdpa_loc_town(id)
+);
+
+
+-- public.fdpa_test_type_test definition
+
+-- Drop table
+
+-- DROP TABLE public.fdpa_test_type_test;
+
+CREATE TABLE public.fdpa_test_type_test (
+	id serial4 NOT NULL,
+	id_type_test int4 NULL,
+	id_test int4 NULL,
+	status int4 NULL,
+	created timestamp(6) NULL,
+	updated timestamp(6) NULL,
+	CONSTRAINT fdpa_test_type_test_pkey PRIMARY KEY (id),
+	CONSTRAINT fdpa_test_type_test_id_test_fkey FOREIGN KEY (id_test) REFERENCES public.fdpa_test(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	CONSTRAINT fdpa_test_type_test_id_type_test_fkey FOREIGN KEY (id_type_test) REFERENCES public.fdpa_type_test(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
