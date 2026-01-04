@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -13,7 +14,7 @@ class UpdateService {
   /// Verifica si hay actualizaciones disponibles en el Play Store
   Future<void> checkForUpdates(BuildContext context, {bool forceCheck = false}) async {
     // Solo funciona en Android real, no en emuladores ni web
-    if (!Platform.isAndroid) {
+    if (kIsWeb || !Platform.isAndroid) {
       developer.log('Verificación de actualizaciones no disponible en esta plataforma');
       if (forceCheck) {
         _showPlatformNotSupportedDialog(context);
