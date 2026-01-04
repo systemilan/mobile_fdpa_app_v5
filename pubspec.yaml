@@ -50,6 +50,11 @@ dependencies:
   
   # Para gestión de estado del tema
   provider: ^6.1.2
+  
+  # Para descargar archivos
+  dio: ^5.4.0
+  path_provider: ^2.1.1
+  permission_handler: ^11.1.0
 
 dev_dependencies:
   flutter_test:

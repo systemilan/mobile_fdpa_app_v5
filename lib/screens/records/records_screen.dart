@@ -247,6 +247,71 @@ class _RecordsScreenState extends State<RecordsScreen>
     }
   }
 
+  /// Descargar PDF de récords nacionales
+  Future<void> _downloadPdf() async {
+    try {
+      // Mostrar indicador de carga
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text('Descargando PDF...'),
+              ],
+            ),
+            duration: Duration(seconds: 30),
+          ),
+        );
+      }
+
+      final filePath = await _recordService.downloadRecordsPdf();
+
+      if (mounted) {
+        // Ocultar indicador de carga
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        // Mostrar mensaje de éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF descargado exitosamente en: $filePath'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // Ocultar indicador de carga
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        
+        // Mostrar mensaje de error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al descargar PDF: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _fadeController.dispose();
@@ -554,33 +619,36 @@ class _RecordsScreenState extends State<RecordsScreen>
         ),
         const SizedBox(width: 15),
         // Botón de descarga
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
+        GestureDetector(
+          onTap: _downloadPdf,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(
-                Icons.download,
-                color: Colors.white,
-                size: 16,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'PDF',
-                style: TextStyle(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(
+                  Icons.download,
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  size: 16,
                 ),
-              ),
-            ],
+                SizedBox(width: 8),
+                Text(
+                  'PDF',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

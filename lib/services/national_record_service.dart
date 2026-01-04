@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../config/environment.dart';
 import '../models/national_record.dart';
 
@@ -252,6 +256,79 @@ class NationalRecordService {
     } catch (e) {
       if (Environment.enableLogs) {
         print('❌ Error fetching statistics: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Descargar PDF de récords nacionales
+  Future<String> downloadRecordsPdf() async {
+    try {
+      // Solicitar permisos de almacenamiento
+      if (!kIsWeb && Platform.isAndroid) {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+          if (!status.isGranted) {
+            // En Android 13+ (API 33+), los permisos de almacenamiento funcionan diferente
+            // No se necesita permiso explícito para guardar en Downloads
+            if (Environment.enableLogs) {
+              print('⚠️ Storage permission not granted, but continuing (Android 13+)');
+            }
+          }
+        }
+      }
+
+      final dio = Dio();
+      final url = '$_baseUrl/national-records/pdf';
+      
+      if (Environment.enableLogs) {
+        print('🌐 Downloading PDF from: $url');
+      }
+
+      // Obtener directorio de descargas
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('No se pudo acceder al directorio de descargas');
+      }
+
+      // Generar nombre del archivo con fecha actual
+      final now = DateTime.now();
+      final formattedDate = '${now.day.toString().padLeft(2, '0')}-'
+          '${now.month.toString().padLeft(2, '0')}-'
+          '${now.year}';
+      final fileName = 'records-nacionales-$formattedDate.pdf';
+      final filePath = '${directory.path}/$fileName';
+
+      // Descargar el archivo
+      await dio.download(
+        url,
+        filePath,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Accept': 'application/pdf',
+          },
+        ),
+      );
+
+      if (Environment.enableLogs) {
+        print('✅ PDF downloaded successfully: $filePath');
+      }
+
+      return filePath;
+    } catch (e) {
+      if (Environment.enableLogs) {
+        print('❌ Error downloading PDF: $e');
       }
       rethrow;
     }
