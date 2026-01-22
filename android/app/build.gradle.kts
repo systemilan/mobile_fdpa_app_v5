@@ -15,7 +15,7 @@ plugins {
 
 android {
     namespace = "com.fdpa.stivou.app"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,9 +39,9 @@ android {
     defaultConfig {
         applicationId = "online.fdpa.mobile.app.twa"
         minSdk = flutter.minSdkVersion
-        targetSdk = 37
-        versionCode = 129
-        versionName = "1.2.9"
+        targetSdk = 36
+        versionCode = 130
+        versionName = "1.3.0"
     }
 
     buildTypes {
