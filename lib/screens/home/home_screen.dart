@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -193,6 +194,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Recarga todos los datos de la pantalla principal (pull-to-refresh)
+  Future<void> _refreshData() async {
+    await Future.wait([
+      _loadLatestEvents(),
+      _loadCalendarActivities(),
+    ]);
+  }
+
   /// Carga los últimos eventos de la API
   Future<void> _loadLatestEvents() async {
     try {
@@ -255,32 +264,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             }
           });
           
-          // Filtrar ÚLTIMOS RESULTADOS: eventos pasados (últimos 90 días)
-          final startDate = now.subtract(const Duration(days: 90));
-          final latestResults = eventItems.where((event) {
+          // ÚLTIMOS RESULTADOS: todos los eventos ya terminados, sin límite de días
+          final allPastEvents = eventItems.where((event) {
             try {
               final eventDate = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
-              // Incluir eventos que terminaron en los últimos 90 días pero antes de hoy
-              return eventDate.isAfter(startDate.subtract(const Duration(days: 1))) && 
-                     eventDate.isBefore(now.add(const Duration(days: 1)));
+              return eventDate.isBefore(now.add(const Duration(days: 1)));
             } catch (e) {
               return false;
             }
           }).toList();
           
-          // Ordenar últimos resultados por fecha (más recientes primero)
-          latestResults.sort((a, b) {
+          // Ordenar por fecha más reciente primero y tomar los 5 últimos
+          allPastEvents.sort((a, b) {
             try {
               final dateA = DateTime.parse(a.dateEnd.isNotEmpty ? a.dateEnd : a.dateStart);
               final dateB = DateTime.parse(b.dateEnd.isNotEmpty ? b.dateEnd : b.dateStart);
-              return dateB.compareTo(dateA); // Orden descendente (más recientes primero)
+              return dateB.compareTo(dateA);
             } catch (e) {
               return 0;
             }
           });
+          final latestResults = allPastEvents.take(5).toList();
           
           debugPrint('✅ Próximos eventos (15 días): ${upcomingEvents.length}');
-          debugPrint('✅ Últimos resultados (90 días): ${latestResults.length}');
+          debugPrint('✅ Últimos resultados (5 más recientes): ${latestResults.length}');
           
           setState(() {
             _upcomingEvents = upcomingEvents;
@@ -319,35 +326,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             }
           });
           
-          // Filtrar ÚLTIMOS RESULTADOS: eventos pasados (últimos 90 días)
-          final startDate = now.subtract(const Duration(days: 90));
-          final latestResults = response.data.where((event) {
+          // ÚLTIMOS RESULTADOS: todos los eventos ya terminados, sin límite de días
+          final allPastEvents2 = response.data.where((event) {
             try {
               final eventDate = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
-              // Incluir eventos que terminaron en los últimos 90 días pero antes de hoy
-              return eventDate.isAfter(startDate.subtract(const Duration(days: 1))) && 
-                     eventDate.isBefore(now.add(const Duration(days: 1)));
+              return eventDate.isBefore(now.add(const Duration(days: 1)));
             } catch (e) {
               return false;
             }
           }).toList();
           
-          // Ordenar últimos resultados por fecha (más recientes primero)
-          latestResults.sort((a, b) {
+          allPastEvents2.sort((a, b) {
             try {
               final dateA = DateTime.parse(a.dateEnd.isNotEmpty ? a.dateEnd : a.dateStart);
               final dateB = DateTime.parse(b.dateEnd.isNotEmpty ? b.dateEnd : b.dateStart);
-              return dateB.compareTo(dateA); // Orden descendente (más recientes primero)
+              return dateB.compareTo(dateA);
             } catch (e) {
               return 0;
             }
           });
+          final latestResults = allPastEvents2.take(5).toList();
           
           debugPrint('✅ Próximos eventos (15 días): ${upcomingEvents.length}');
-          debugPrint('✅ Últimos resultados (90 días): ${latestResults.length}');
-          
-          debugPrint('✅ Próximos eventos (15 días): ${upcomingEvents.length}');
-          debugPrint('✅ Últimos resultados (30 días): ${latestResults.length}');
+          debugPrint('✅ Últimos resultados (5 más recientes): ${latestResults.length}');
           
           setState(() {
             _upcomingEvents = upcomingEvents;
@@ -521,10 +522,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 32),
+          child: RefreshIndicator(
+            onRefresh: _refreshData,
+            color: const Color(0xFFE53935),
+            backgroundColor: const Color(0xFF1A1A2E),
+            strokeWidth: 2.5,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -773,10 +780,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ? Container(
                 height: 150,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
+                    color: isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black12,
                     width: 1,
                   ),
                 ),
@@ -786,14 +793,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       Icon(
                         Icons.event_busy,
-                        color: Colors.white.withOpacity(0.4),
+                        color: isDarkMode ? Colors.white38 : Colors.black26,
                         size: 40,
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'No hay resultados recientes',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: isDarkMode ? Colors.white60 : Colors.black54,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -802,7 +809,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Text(
                         'Los resultados de eventos pasados aparecerán aquí',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
+                          color: isDarkMode ? Colors.white38 : Colors.black38,
                           fontSize: 13,
                         ),
                       ),
@@ -835,37 +842,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   List<Map<String, String>> _getResultsData() {
-    // Usar últimos resultados (eventos pasados) ordenados descendentemente
     if (_latestResults.isNotEmpty) {
-      // Crear una copia de la lista para ordenar
-      final sortedResults = List<EventItem>.from(_latestResults);
-      
-      // Ordenar por fecha de inicio de forma descendente (más recientes primero)
-      sortedResults.sort((a, b) {
-        try {
-          final dateA = DateTime.parse(a.dateStart);
-          final dateB = DateTime.parse(b.dateStart);
-          return dateB.compareTo(dateA); // Orden descendente
-        } catch (e) {
-          return 0;
-        }
-      });
-      
-      return sortedResults.map((event) {
+      // Ya vienen ordenados por fecha desc y limitados a 5 desde la carga
+      return _latestResults.take(5).map((event) {
         return {
           'id': event.id,
-          'date': event.formattedStartDate, // Solo fecha de inicio
+          'date': event.formattedStartDate,
           'title': event.longName,
           'location': '${event.stadium.shortName} - ${event.stadium.locationFormatted}',
         };
       }).toList();
     }
-    
-    // Retornar lista vacía si no hay eventos de la API
     return [];
   }
 
   Widget _buildResultCard(String? eventId, String date, String title, String location) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -963,13 +955,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         height: 150,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFF1D1F28),
+          color: isDark ? const Color(0xFF1D1F28) : Colors.white,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: const [
+          border: isDark ? null : Border.all(color: Colors.black12),
+          boxShadow: [
             BoxShadow(
-              color: Colors.black26,
+              color: isDark ? Colors.black26 : Colors.black12,
               blurRadius: 10,
-              offset: Offset(0, 5),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -979,8 +972,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Text(
               date,
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black54,
                 fontSize: 14,
               ),
             ),
@@ -989,8 +982,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1005,8 +998,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Expanded(
                   child: Text(
                     location,
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
                       fontSize: 14,
                     ),
                     maxLines: 1,
@@ -1056,19 +1049,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildStatsCard(String title, String subtitle, IconData icon, VoidCallback onTap) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1D1F28),
+          color: isDark ? const Color(0xFF1D1F28) : Colors.white,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: const [
+          border: isDark ? null : Border.all(color: Colors.black12),
+          boxShadow: [
             BoxShadow(
-              color: Colors.black26,
+              color: isDark ? Colors.black26 : Colors.black12,
               blurRadius: 10,
-              offset: Offset(0, 5),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1080,34 +1075,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.black45,
+                      fontSize: 13,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: 60,
-              height: 60,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFFE74C3C).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(30),
+                color: const Color(0xFFE74C3C).withOpacity(isDark ? 0.2 : 0.12),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Icon(
                 icon,
                 color: const Color(0xFFE74C3C),
-                size: 30,
+                size: 28,
               ),
             ),
           ],
@@ -1561,94 +1556,308 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Mostrar calendario modal con actividades
-  void _showCalendarFromActivities(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1D1F28),
-                Color(0xFF2A2D36),
+  /// Descargar PDF del calendario de eventos
+  Future<void> _downloadCalendarPdf() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La descarga de PDF solo está disponible en la app móvil.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text('Descargando calendario PDF...'),
               ],
             ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFFE74C3C).withOpacity(0.3),
-              width: 2,
+            duration: Duration(seconds: 30),
+          ),
+        );
+      }
+
+      final eventService = EventService();
+      final filePath = await eventService.downloadCalendarPdf();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Calendario descargado en: $filePath'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al descargar PDF: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Mostrar calendario modal con actividades
+  void _showCalendarFromActivities(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF1A1D27) : Colors.white;
+    final dividerColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black12;
+    final pillColor = isDark ? Colors.white24 : Colors.black26;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  const Text(
-                    'Calendario de Eventos',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  // Pill handle
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 4),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: pillColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white70),
-                    onPressed: () => Navigator.pop(context),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE74C3C).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.event_rounded,
+                            color: Color(0xFFE74C3C),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Calendario de Eventos',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              Text(
+                                'Temporada 2026',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white54 : Colors.black45,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Botón descargar PDF (solo en móvil)
+                        if (!kIsWeb)
+                          GestureDetector(
+                            onTap: _downloadCalendarPdf,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE74C3C).withOpacity(0.13),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFFE74C3C).withOpacity(0.35),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.download_rounded, color: Color(0xFFE74C3C), size: 15),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    'PDF',
+                                    style: TextStyle(
+                                      color: Color(0xFFE74C3C),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54, size: 18),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Divider(color: dividerColor, height: 1),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: _calendarActivities.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  color: isDark ? Colors.white.withOpacity(0.2) : Colors.black26,
+                                  size: 56,
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'No hay eventos próximos',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white54 : Colors.black45,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                            itemCount: _calendarActivities.length,
+                            itemBuilder: (context, index) {
+                              final activity = _calendarActivities[index];
+                              return _buildCalendarEventCardFromActivity(activity);
+                            },
+                          ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: _calendarActivities.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Colors.white.withOpacity(0.3),
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No hay eventos próximos',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _calendarActivities.length,
-                        itemBuilder: (context, index) {
-                          final activity = _calendarActivities[index];
-                          return _buildCalendarEventCardFromActivity(activity);
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
   /// Card de evento en el calendario modal
   Widget _buildCalendarEventCardFromActivity(CalendarActivity activity) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    DateTime? startDate;
+    DateTime? endDate;
+    try { startDate = DateTime.parse(activity.dateStart); } catch (_) {}
+    try { endDate = DateTime.parse(activity.dateEnd); } catch (_) {}
+
+    const monthNames = [
+      'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+      'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
+    ];
+    final dayStr = startDate != null ? startDate.day.toString().padLeft(2, '0') : '--';
+    final monStr = startDate != null ? monthNames[startDate.month - 1] : '--';
+    final isMultiDay = endDate != null && startDate != null && endDate.day != startDate.day;
+    final endDayStr = endDate != null ? endDate.day.toString().padLeft(2, '0') : '';
+    final isClickable = activity.eventId != null && activity.eventId!.isNotEmpty;
+    final days = activity.daysUntilStart;
+
+    // Paleta según tipo
+    final Color accentColor;
+    final Color accentBg;
+    final Color dateTextColor;
+    final String typeLabel;
+    switch (activity.type) {
+      case 'international':
+        accentColor = const Color(0xFF4FC3F7);   // celeste
+        accentBg    = const Color(0xFF0D1F3C);
+        dateTextColor = const Color(0xFF81D4FA);
+        typeLabel   = 'INTERNACIONAL';
+        break;
+      case 'regional':
+        accentColor = const Color(0xFFFFB74D);   // ámbar
+        accentBg    = const Color(0xFF2A1A00);
+        dateTextColor = const Color(0xFFFFCC80);
+        typeLabel   = 'REGIONAL';
+        break;
+      default: // national
+        accentColor = const Color(0xFFEF5350);   // rojo vivo
+        accentBg    = const Color(0xFF2A0A0A);
+        dateTextColor = const Color(0xFFEF9A9A);
+        typeLabel   = 'NACIONAL';
+    }
+
+    // Color del badge de días según urgencia
+    final Color daysColor;
+    final Color daysBg;
+    if (days <= 0) {
+      daysColor = const Color(0xFF69F0AE);
+      daysBg    = const Color(0xFF003322);
+    } else if (days <= 7) {
+      daysColor = const Color(0xFFEF5350);
+      daysBg    = const Color(0xFF2A0A0A);
+    } else if (days <= 14) {
+      daysColor = const Color(0xFFFF8A65);
+      daysBg    = const Color(0xFF2A1200);
+    } else if (days <= 30) {
+      daysColor = const Color(0xFFFFD54F);
+      daysBg    = const Color(0xFF2A2000);
+    } else {
+      daysColor = const Color(0xFF80CBC4);
+      daysBg    = const Color(0xFF002A28);
+    }
+
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        if (activity.eventId != null && activity.eventId!.isNotEmpty) {
+        if (isClickable) {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -1665,147 +1874,197 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF282C34),
-          borderRadius: BorderRadius.circular(12),
+          color: isDark ? const Color(0xFF1E2130) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: activity.typeColor.withOpacity(0.3),
+            color: accentColor.withOpacity(isDark ? 0.2 : 0.3),
             width: 1,
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: activity.typeColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    () {
-                      try {
-                        final date = DateTime.parse(activity.dateStart);
-                        return date.day.toString();
-                      } catch (e) {
-                        return '--';
-                      }
-                    }(),
-                    style: TextStyle(
-                      color: activity.typeColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    () {
-                      try {
-                        final date = DateTime.parse(activity.dateStart);
-                        final monthNames = [
-                          'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-                          'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'
-                        ];
-                        return monthNames[date.month - 1];
-                      } catch (e) {
-                        return '--';
-                      }
-                    }(),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? accentColor.withOpacity(0.08) : Colors.black12,
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: activity.typeColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: activity.typeColor,
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          activity.type.toUpperCase(),
-                          style: TextStyle(
-                            color: activity.typeColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              // Accent left bar
+              Positioned(
+                left: 0, top: 0, bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [accentColor, accentColor.withOpacity(0.4)],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 13, 13, 13),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Date box
+                    Container(
+                      width: 54,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: accentBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: accentColor.withOpacity(0.35),
+                          width: 1,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    activity.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  if (activity.location.isNotEmpty)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.white54,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            activity.location,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            dayStr,
+                            style: TextStyle(
+                              color: dateTextColor,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
                             ),
-                            maxLines: 1,
+                          ),
+                          if (isMultiDay)
+                            Text(
+                              '–$endDayStr',
+                              style: TextStyle(
+                                color: accentColor.withOpacity(0.6),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            monStr,
+                            style: TextStyle(
+                              color: accentColor.withOpacity(0.8),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    // Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Type badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: accentColor.withOpacity(0.4),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              typeLabel,
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          // Title
+                          Text(
+                            activity.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.bold,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (activity.location.isNotEmpty) ...[
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_rounded,
+                                    color: accentColor.withOpacity(0.5), size: 11),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    activity.location,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.45),
+                                      fontSize: 11.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Right: days badge + arrow
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: daysBg,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: daysColor.withOpacity(0.45),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            days == 0 ? 'HOY' : '${days}d',
+                            style: TextStyle(
+                              color: daysColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: days == 0 ? 0.8 : 0,
+                            ),
+                          ),
                         ),
+                        if (isClickable) ...[
+                          const SizedBox(height: 8),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: accentColor.withOpacity(0.4),
+                            size: 20,
+                          ),
+                        ],
                       ],
                     ),
-                ],
-              ),
-            ),
-            if (activity.daysUntilStart > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE74C3C).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${activity.daysUntilStart}d',
-                  style: const TextStyle(
-                    color: Color(0xFFE74C3C),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  ],
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -2057,10 +2316,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Diálogo para mostrar detalles de una actividad
   void _showActivityDetails(BuildContext context, CalendarActivity activity) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final bgColor = isDark ? const Color(0xFF1D1F28) : Colors.white;
+    final textPrimary = isDark ? Colors.white : Colors.black87;
+    final textSecondary = isDark ? Colors.white70 : Colors.black54;
+    final iconColor = isDark ? Colors.white54 : Colors.black38;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1D1F28),
+        backgroundColor: bgColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
@@ -2073,7 +2337,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: activity.typeColor.withOpacity(0.2),
+                color: activity.typeColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: activity.typeColor,
@@ -2098,17 +2362,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               Text(
                 activity.title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 16),
               if (activity.description.isNotEmpty) ...[
-                const Text(
+                Text(
                   'Descripción:',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFFE74C3C),
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -2117,8 +2381,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 Text(
                   activity.description,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 14,
                   ),
                 ),
@@ -2126,12 +2390,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
               Row(
                 children: [
-                  const Icon(Icons.calendar_today, color: Colors.white54, size: 18),
+                  Icon(Icons.calendar_today, color: iconColor, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       activity.formattedDateRange,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(color: textSecondary, fontSize: 14),
                     ),
                   ),
                 ],
@@ -2140,11 +2404,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, color: Colors.white54, size: 18),
+                    Icon(Icons.access_time, color: iconColor, size: 18),
                     const SizedBox(width: 8),
                     Text(
                       activity.formattedDuration,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(color: textSecondary, fontSize: 14),
                     ),
                   ],
                 ),
@@ -2153,12 +2417,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, color: Colors.white54, size: 18),
+                    Icon(Icons.location_on, color: iconColor, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         activity.location,
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(color: textSecondary, fontSize: 14),
                       ),
                     ),
                   ],
@@ -2229,6 +2493,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         final weekDay = weekDays[now.weekday % 7];
         
+        final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -2236,17 +2501,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1D1F28),
-                const Color(0xFF2A2D36),
-              ],
+              colors: isDark
+                  ? [const Color(0xFF1D1F28), const Color(0xFF2A2D36)]
+                  : [Colors.white, const Color(0xFFF5F5F5)],
             ),
             borderRadius: BorderRadius.circular(15),
-            boxShadow: const [
+            border: isDark ? null : Border.all(color: Colors.black12),
+            boxShadow: [
               BoxShadow(
-                color: Colors.black26,
+                color: isDark ? Colors.black26 : Colors.black12,
                 blurRadius: 10,
-                offset: Offset(0, 5),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -2256,7 +2521,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Text(
                 weekDay,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
+                  color: isDark ? Colors.white70 : Colors.black54,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 1,

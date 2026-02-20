@@ -28,7 +28,8 @@ class Environment {
   
   // Configuraciones adicionales por ambiente
   static bool get isProduction => current == EnvironmentType.production;
-  static bool get enableLogs => current == EnvironmentType.local;
+  // Logs activos siempre para facilitar diagnóstico desde adb logcat / Flutter DevTools
+  static bool get enableLogs => true;
   
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);

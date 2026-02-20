@@ -573,11 +573,18 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
     if (_resultData == null) return [];
     
     return _resultData!.series.map((serie) {
-      // Filtrar solo los resultados con posición válida y ordenar
+      // Mostrar todos los atletas con nombre; posicionados primero, luego sin posición
       final sortedResults = serie.results
-          .where((r) => r.position != null)
+          .where((r) => r.name.isNotEmpty)
           .toList()
-        ..sort((a, b) => (a.position ?? 999).compareTo(b.position ?? 999));
+        ..sort((a, b) {
+          final posA = a.position;
+          final posB = b.position;
+          if (posA != null && posB != null) return posA.compareTo(posB);
+          if (posA != null) return -1; // con posición va primero
+          if (posB != null) return 1;
+          return 0;
+        });
       
       if (sortedResults.isEmpty) return const SizedBox.shrink();
       
@@ -699,7 +706,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Puesto ${athlete.position}',
+                      athlete.position != null ? 'Puesto ${athlete.position}' : '-',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,

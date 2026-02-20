@@ -6,10 +6,13 @@ class ResultDetailScreenType2 extends StatefulWidget {
   final String eventTestId;
   final String? eventId; // Optional: required for historical tests
 
+  final String? eventDate; // Fecha ISO de la jornada (ej. "2026-03-15") para determinar si ya pasó
+
   const ResultDetailScreenType2({
     super.key,
     required this.eventTestId,
     this.eventId,
+    this.eventDate,
   });
 
   @override
@@ -39,6 +42,20 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
   bool _isLoading = true;
   String? _errorMessage;
   final EventService _eventService = EventService();
+
+  /// True si la fecha del evento ya pasó (o no se proporcionó fecha → asumir que ya pasó)
+  bool get _isEventPast {
+    final dateStr = widget.eventDate;
+    if (dateStr == null || dateStr.isEmpty) return true;
+    try {
+      final eventDay = DateTime.parse(dateStr);
+      // Comparar con el inicio del día siguiente para que "hoy" cuente como pasado al final del día
+      final endOfEventDay = DateTime(eventDay.year, eventDay.month, eventDay.day + 1);
+      return DateTime.now().isAfter(endOfEventDay);
+    } catch (_) {
+      return true;
+    }
+  }
 
   @override
   void initState() {
@@ -756,7 +773,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        'DNS',
+                        _isEventPast ? 'DNS' : '- - -',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -809,7 +826,9 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                   const SizedBox(height: 8),
                   // Información adicional
                   Text(
-                    isDNS ? 'No participó' : 'Clasificado',
+                    isDNS
+                        ? (_isEventPast ? 'No participó' : 'Aún sin participar')
+                        : 'Clasificado',
                     style: TextStyle(
                       color: isDNS ? Colors.white.withOpacity(0.4) : const Color(0xFF2ED573),
                       fontSize: 12,

@@ -828,97 +828,156 @@ class _RecordsScreenState extends State<RecordsScreen>
     }
 
     // Formatear fecha
-    String formattedDate = '${record.recordDate.day.toString().padLeft(2, '0')}/${record.recordDate.month.toString().padLeft(2, '0')}/${record.recordDate.year}';
+    final formattedDate =
+        '${record.recordDate.day.toString().padLeft(2, '0')}/'
+        '${record.recordDate.month.toString().padLeft(2, '0')}/'
+        '${record.recordDate.year}';
+
+    // Detectar si es posta/equipo: más de un "(xx)" en el campo de atleta.
+    // Los nombres pueden venir separados por coma O por espacio.
+    final parenCount = RegExp(r'\(\d{2}\)').allMatches(record.athlete).length;
+    final isRelay = parenCount > 1;
+
+    // Separar atletas: primero intentar por coma; si no hay comas, separar por el
+    // patrón "YY) NombreApellido" usando lookahead para no perder los paréntesis.
+    List<String> athleteParts;
+    if (isRelay) {
+      if (record.athlete.contains(',')) {
+        athleteParts = record.athlete.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      } else {
+        // Separar en cada aparición de "(NN) " seguido de mayúscula
+        athleteParts = record.athlete
+            .splitMapJoin(
+              RegExp(r'(?<=\(\d{2}\))\s+(?=[A-ZÁÉÍÓÚÑ])'),
+              onMatch: (_) => '|',
+              onNonMatch: (s) => s,
+            )
+            .split('|')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+    } else {
+      athleteParts = [record.athlete];
+    }
 
     return GestureDetector(
-      onTap: () {
-        _showRecordDetails(record);
-      },
+      onTap: () => _showRecordDetails(record),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.03),
           borderRadius: borderRadius,
-          border: index < totalRecords - 1 ? Border(
-            bottom: BorderSide(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-          ) : null,
+          border: index < totalRecords - 1
+              ? Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withOpacity(0.08),
+                    width: 1,
+                  ),
+                )
+              : null,
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Información principal
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    record.athlete,
+            // ── Fila 1: Prueba (izq) + Marca (der) — ambos cortos, nunca desbordan ──
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: _buildInfoChip(Icons.directions_run_rounded, record.event),
+                ),
+                const SizedBox(width: 8),
+                // Marca destacada — tamaño fijo, no depende del nombre
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE74C3C).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFE74C3C).withOpacity(0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${record.record}${record.wind != null ? '  ${record.wind}' : ''}',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFE74C3C),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
                     ),
+                    maxLines: 1,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Prueba: ${record.event}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      height: 1.6,
-                    ),
-                  ),
-                  Text(
-                    'Registro: ${record.record}${record.wind != null ? ' ${record.wind}' : ''}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // Información secundaria
-            Container(
-              constraints: const BoxConstraints(minWidth: 140),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Lugar: ${record.place}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      height: 1.6,
-                    ),
-                    textAlign: TextAlign.end,
-                  ),
-                  Text(
-                    'Fecha: $formattedDate',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      height: 1.6,
-                    ),
-                    textAlign: TextAlign.end,
-                  ),
-                  if (record.coach.isNotEmpty) ...[
-                    Text(
-                      'Entrenador: ${record.coach}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 12,
-                        height: 1.6,
+
+            const SizedBox(height: 8),
+
+            // ── Fila 2: Nombre(s) atleta — ancho completo, sin competir con la marca ──
+            if (isRelay)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: athleteParts
+                    .map(
+                      (name) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      textAlign: TextAlign.end,
-                    ),
-                  ],
-                ],
+                    )
+                    .toList(),
+              )
+            else
+              Text(
+                record.athlete,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+
+            const SizedBox(height: 8),
+
+            // ── Fila 3: lugar · fecha · entrenador ──
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 5,
+                      children: [
+                        _buildInfoChip(Icons.location_on_outlined, record.place),
+                        _buildInfoChip(Icons.calendar_today_outlined, formattedDate),
+                      ],
+                    ),
+                    if (record.coach.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        width: constraints.maxWidth,
+                        child: _buildInfoChip(Icons.person_outline, record.coach),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -926,37 +985,265 @@ class _RecordsScreenState extends State<RecordsScreen>
     );
   }
 
-  void _showRecordDetails(NationalRecord record) {
-    // Formatear fecha
-    String formattedDate = '${record.recordDate.day.toString().padLeft(2, '0')}/${record.recordDate.month.toString().padLeft(2, '0')}/${record.recordDate.year}';
+  Widget _buildInfoChip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, color: Colors.white38, size: 12),
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.55),
+              fontSize: 11,
+              height: 1.4,
+            ),
+            softWrap: true,
+          ),
+        ),
+      ],
+    );
+  }
 
-    showDialog(
+  void _showRecordDetails(NationalRecord record) {
+    final formattedDate =
+        '${record.recordDate.day.toString().padLeft(2, '0')}/'
+        '${record.recordDate.month.toString().padLeft(2, '0')}/'
+        '${record.recordDate.year}';
+
+    // Detectar posta igual que en la card
+    final parenCount = RegExp(r'\(\d{2}\)').allMatches(record.athlete).length;
+    final isRelay = parenCount > 1;
+    List<String> athleteParts;
+    if (isRelay) {
+      if (record.athlete.contains(',')) {
+        athleteParts = record.athlete.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      } else {
+        athleteParts = record.athlete
+            .splitMapJoin(
+              RegExp(r'(?<=\(\d{2}\))\s+(?=[A-ZÁÉÍÓÚÑ])'),
+              onMatch: (_) => '|',
+              onNonMatch: (s) => s,
+            )
+            .split('|')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+    } else {
+      athleteParts = [record.athlete];
+    }
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1D1F28),
-        title: Text(
-          record.athlete,
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDetailRow('Categoría:', record.category),
-            _buildDetailRow('Prueba:', record.event),
-            _buildDetailRow('Registro:', '${record.record}${record.wind != null ? ' ${record.wind}' : ''}'),
-            _buildDetailRow('Lugar:', record.place),
-            _buildDetailRow('Fecha:', formattedDate),
-            if (record.coach.isNotEmpty)
-              _buildDetailRow('Entrenador:', record.coach),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cerrar',
-              style: TextStyle(color: Colors.white70),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF12141F),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pill handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Marca grande centrada ──
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE74C3C).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFFE74C3C).withOpacity(0.5),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    '${record.record}${record.wind != null ? '   ${record.wind}' : ''}',
+                    style: const TextStyle(
+                      color: Color(0xFFE74C3C),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // Prueba centrada bajo la marca
+              Center(
+                child: Text(
+                  record.event,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Atleta(s) ──
+              if (isRelay) ...[
+                Text(
+                  'EQUIPO',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.35),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: athleteParts
+                      .map((name) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.12),
+                              ),
+                            ),
+                            child: Text(
+                              name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ] else ...[
+                Text(
+                  record.athlete,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              Divider(color: Colors.white.withOpacity(0.08), height: 1),
+              const SizedBox(height: 16),
+
+              // ── Datos en grid 2 columnas ──
+              Row(
+                children: [
+                  Expanded(child: _buildDetailTile(Icons.bookmark_outline, 'Categoría', record.category)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildDetailTile(Icons.location_on_outlined, 'Lugar', record.place)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildDetailTile(Icons.calendar_today_outlined, 'Fecha', formattedDate)),
+                  if (record.coach.isNotEmpty) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildDetailTile(Icons.person_outline, 'Entrenador', record.coach)),
+                  ] else
+                    const Expanded(child: SizedBox()),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Botón cerrar ──
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.06),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'Cerrar',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailTile(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.white30, size: 13),
+              const SizedBox(width: 5),
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.35),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
             ),
           ),
         ],

@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:open_filex/open_filex.dart';
 import '../config/environment.dart';
 import '../models/event.dart';
 import '../models/event_list.dart';
@@ -148,24 +153,23 @@ class EventService {
     }
   }
 
-  /// Obtener los resultados de una prueba específica (tipo 2 - pruebas de campo)
+  /// Obtener los resultados de una prueba específica.
+  /// El backend retorna la misma estructura para los tres tipos;
+  /// la pantalla de destino (Type1/Type2/Type3) determina cómo interpretarlos.
+  ///
+  /// Este método reemplaza los tres anteriores (getEventTestResults,
+  /// getRaceEventResults, getHeightEventResults) que apuntaban al mismo endpoint.
   Future<ResultType2Response> getEventTestResults(String eventTestId, {String? eventId}) async {
     try {
       Uri url = Uri.parse('$_baseUrl/public/event-tests/$eventTestId/results');
 
-      // Si se proporciona eventId (requerido para pruebas históricas), agregar como query param
       if (eventId != null) {
         url = url.replace(queryParameters: {'eventId': eventId});
       } else if (eventTestId.startsWith('hist-test-')) {
-        // Log defensivo: petición histórica sin eventId probablemente fallará en backend
-        if (Environment.enableLogs) {
-          print('❌ Missing eventId for historical event-test $eventTestId');
-        }
+        debugPrint('⚠️ [EventService] Petición histórica sin eventId para $eventTestId — puede fallar en backend');
       }
 
-      if (Environment.enableLogs) {
-        print('🌐 Fetching results for event test $eventTestId from: $url');
-      }
+      debugPrint('🌐 [EventService] GET $url');
 
       final response = await http.get(
         url,
@@ -176,141 +180,81 @@ class EventService {
       ).timeout(
         Environment.connectTimeout,
         onTimeout: () {
-          throw Exception('Connection timeout');
+          throw Exception('Connection timeout al obtener resultados de $eventTestId');
         },
       );
 
-      if (Environment.enableLogs) {
-        print('📊 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
+      debugPrint('📊 [EventService] Status: ${response.statusCode}');
+      if (response.body.length < 2000) {
+        debugPrint('📦 [EventService] Body: ${response.body}');
+      } else {
+        debugPrint('📦 [EventService] Body (primeros 500 chars): ${response.body.substring(0, 500)}');
       }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
         final resultsResponse = ResultType2Response.fromJson(jsonData);
-        
-        if (Environment.enableLogs) {
-          print('✅ Successfully fetched results with ${resultsResponse.data.series.length} series');
-        }
-        
+        debugPrint('✅ [EventService] ${resultsResponse.data.series.length} series obtenidas para $eventTestId');
         return resultsResponse;
       } else {
-        throw Exception('Failed to load results: ${response.statusCode}');
+        throw Exception('Error ${response.statusCode} al obtener resultados de $eventTestId: ${response.body}');
       }
     } catch (e) {
-      if (Environment.enableLogs) {
-        print('❌ Error fetching results: $e');
-      }
+      debugPrint('❌ [EventService] Error en getEventTestResults($eventTestId): $e');
       rethrow;
     }
   }
 
-  /// Obtener los resultados de pruebas de altura (tipo 3 - salto de altura, garrocha, etc.)
-  Future<ResultType3Response> getHeightEventResults(String eventTestId, {String? eventId}) async {
-    try {
-      Uri url = Uri.parse('$_baseUrl/public/event-tests/$eventTestId/results');
-
-      if (eventId != null) {
-        url = url.replace(queryParameters: {'eventId': eventId});
-      } else if (eventTestId.startsWith('hist-test-')) {
-        if (Environment.enableLogs) {
-          print('❌ Missing eventId for historical height event-test $eventTestId');
-        }
-      }
-
-      if (Environment.enableLogs) {
-        print('🌐 Fetching height event results for event test $eventTestId from: $url');
-      }
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(
-        Environment.connectTimeout,
-        onTimeout: () {
-          throw Exception('Connection timeout');
-        },
-      );
-
-      if (Environment.enableLogs) {
-        print('📊 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
-      }
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        final resultsResponse = ResultType3Response.fromJson(jsonData);
-        
-        if (Environment.enableLogs) {
-          print('✅ Successfully fetched height results with ${resultsResponse.data.series.length} series');
-        }
-        
-        return resultsResponse;
-      } else {
-        throw Exception('Failed to load height results: ${response.statusCode}');
-      }
-    } catch (e) {
-      if (Environment.enableLogs) {
-        print('❌ Error fetching height results: $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// Obtener los resultados de carreras (tipo 1 - 100m, 200m, 400m, etc.)
+  /// Alias para compatibilidad — parsea el mismo endpoint con ResultType1Response
+  /// (usado por ResultDetailScreenType2 — carreras con carril y tiempo).
   Future<ResultType1Response> getRaceEventResults(String eventTestId, {String? eventId}) async {
     try {
       Uri url = Uri.parse('$_baseUrl/public/event-tests/$eventTestId/results');
-
       if (eventId != null) {
         url = url.replace(queryParameters: {'eventId': eventId});
-      } else if (eventTestId.startsWith('hist-test-')) {
-        if (Environment.enableLogs) {
-          print('❌ Missing eventId for historical race event-test $eventTestId');
-        }
       }
-
-      if (Environment.enableLogs) {
-        print('🌐 Fetching race event results for event test $eventTestId from: $url');
-      }
-
+      debugPrint('🌐 [EventService] getRaceEventResults GET $url');
       final response = await http.get(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(
-        Environment.connectTimeout,
-        onTimeout: () {
-          throw Exception('Connection timeout');
-        },
-      );
-
-      if (Environment.enableLogs) {
-        print('📊 Response status: ${response.statusCode}');
-        print('📦 Response body: ${response.body}');
-      }
-
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      ).timeout(Environment.connectTimeout, onTimeout: () {
+        throw Exception('Timeout en getRaceEventResults($eventTestId)');
+      });
+      debugPrint('📊 [EventService] getRaceEventResults status: ${response.statusCode}');
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        final resultsResponse = ResultType1Response.fromJson(jsonData);
-        
-        if (Environment.enableLogs) {
-          print('✅ Successfully fetched race results with ${resultsResponse.data.series.length} series');
-        }
-        
-        return resultsResponse;
-      } else {
-        throw Exception('Failed to load race results: ${response.statusCode}');
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        return ResultType1Response.fromJson(jsonData);
       }
+      throw Exception('Error ${response.statusCode} en getRaceEventResults($eventTestId)');
     } catch (e) {
-      if (Environment.enableLogs) {
-        print('❌ Error fetching race results: $e');
+      debugPrint('❌ [EventService] getRaceEventResults($eventTestId): $e');
+      rethrow;
+    }
+  }
+
+  /// Alias para compatibilidad — parsea el mismo endpoint con ResultType3Response
+  /// (usado por ResultDetailScreenType3 — pruebas de altura).
+  Future<ResultType3Response> getHeightEventResults(String eventTestId, {String? eventId}) async {
+    try {
+      Uri url = Uri.parse('$_baseUrl/public/event-tests/$eventTestId/results');
+      if (eventId != null) {
+        url = url.replace(queryParameters: {'eventId': eventId});
       }
+      debugPrint('🌐 [EventService] getHeightEventResults GET $url');
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      ).timeout(Environment.connectTimeout, onTimeout: () {
+        throw Exception('Timeout en getHeightEventResults($eventTestId)');
+      });
+      debugPrint('📊 [EventService] getHeightEventResults status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        return ResultType3Response.fromJson(jsonData);
+      }
+      throw Exception('Error ${response.statusCode} en getHeightEventResults($eventTestId)');
+    } catch (e) {
+      debugPrint('❌ [EventService] getHeightEventResults($eventTestId): $e');
       rethrow;
     }
   }
@@ -405,6 +349,89 @@ class EventService {
     } catch (e) {
       debugPrint('❌ Error fetching calendar activities: $e');
       debugPrint('❌ Stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  /// Descargar PDF del calendario de eventos
+  Future<String> downloadCalendarPdf() async {
+    try {
+      if (kIsWeb) {
+        throw Exception('La descarga de PDF no está disponible en la versión web. Por favor, usa la aplicación móvil.');
+      }
+
+      // Solicitar permisos de almacenamiento solo en Android
+      if (Platform.isAndroid) {
+        var status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+          if (!status.isGranted) {
+            if (Environment.enableLogs) {
+              debugPrint('⚠️ Storage permission not granted, but continuing (Android 13+)');
+            }
+          }
+        }
+      }
+
+      final dio = Dio();
+      final url = '$_baseUrl/public/calendar-activities/pdf';
+
+      if (Environment.enableLogs) {
+        debugPrint('🌐 Downloading Calendar PDF from: $url');
+      }
+
+      // Obtener directorio de descargas
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      if (directory == null) {
+        throw Exception('No se pudo acceder al directorio de descargas');
+      }
+
+      // Generar nombre del archivo con fecha actual
+      final now = DateTime.now();
+      final formattedDate = '${now.day.toString().padLeft(2, '0')}-'
+          '${now.month.toString().padLeft(2, '0')}-'
+          '${now.year}';
+      final fileName = 'calendario-fdpa-$formattedDate.pdf';
+      final filePath = '${directory.path}/$fileName';
+
+      // Descargar el archivo
+      await dio.download(
+        url,
+        filePath,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Accept': 'application/pdf',
+          },
+        ),
+      );
+
+      if (Environment.enableLogs) {
+        debugPrint('✅ Calendar PDF downloaded successfully: $filePath');
+      }
+
+      // Abrir el archivo automáticamente
+      if (Platform.isAndroid || Platform.isIOS) {
+        final result = await OpenFilex.open(filePath);
+        if (Environment.enableLogs) {
+          debugPrint('📄 Open file result: ${result.message}');
+        }
+      }
+
+      return filePath;
+    } catch (e) {
+      if (Environment.enableLogs) {
+        debugPrint('❌ Error downloading Calendar PDF: $e');
+      }
       rethrow;
     }
   }

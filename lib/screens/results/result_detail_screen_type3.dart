@@ -6,10 +6,13 @@ class ResultDetailScreenType3 extends StatefulWidget {
   final String eventTestId;
   final String? eventId; // Optional: event UUID for historical tests
 
+  final String? eventDate; // Fecha ISO de la jornada para determinar si ya pasó
+
   const ResultDetailScreenType3({
     super.key,
     required this.eventTestId,
     this.eventId,
+    this.eventDate,
   });
 
   @override

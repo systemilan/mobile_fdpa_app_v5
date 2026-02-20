@@ -131,7 +131,8 @@ class TestInfo {
       officialName: json['officialName'] ?? '',
       commonName: json['commonName'] ?? '',
       type: json['type'] ?? '',
-      inputFormat: json['inputFormat'] ?? '',
+      // Leer inputFormat o input_format (snake_case) para compatibilidad con el backend
+      inputFormat: json['inputFormat']?.toString() ?? json['input_format']?.toString() ?? '',
       measuresWind: json['measuresWind'] ?? false,
     );
   }

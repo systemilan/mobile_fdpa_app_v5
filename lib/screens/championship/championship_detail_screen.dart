@@ -502,7 +502,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
             jornada.tests.asMap().entries.map((testEntry) {
               final testIndex = testEntry.key;
               final test = testEntry.value;
-              return _buildAnimatedTestCard(test, testIndex);
+              return _buildAnimatedTestCard(test, testIndex, jornadaDate: jornada.date);
             }).toList()
           );
         }
@@ -770,7 +770,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
     );
   }
 
-  Widget _buildAnimatedTestCard(ScheduledTest test, int index) {
+  Widget _buildAnimatedTestCard(ScheduledTest test, int index, {String jornadaDate = ''}) {
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 200 + (index * 80)),
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -813,6 +813,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                           builder: (context) => ResultDetailScreenType2(
                             eventTestId: test.id,
                             eventId: eventIdToPass, // eventId requerido para históricos
+                            eventDate: jornadaDate,
                           ),
                         ),
                       );
@@ -824,6 +825,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                           builder: (context) => ResultDetailScreenType3(
                             eventTestId: test.id,
                             eventId: eventIdToPass, // eventId requerido para históricos
+                            eventDate: jornadaDate,
                           ),
                         ),
                       );
@@ -884,6 +886,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                         MaterialPageRoute(
                           builder: (context) => ResultDetailScreenType2(
                             eventTestId: test.id,
+                            eventDate: jornadaDate,
                             // NO pasar eventId para eventos actuales
                           ),
                         ),
@@ -895,6 +898,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                         MaterialPageRoute(
                           builder: (context) => ResultDetailScreenType3(
                             eventTestId: test.id,
+                            eventDate: jornadaDate,
                             // NO pasar eventId para eventos actuales
                           ),
                         ),
@@ -917,8 +921,29 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                         ),
                       );
                     } else {
-                      // Comportamiento original para eventos actuales
-                      debugPrint('Test tapped: ${test.test.commonName} (type: ${test.test.type}, inputFormat: ${test.test.inputFormat})');
+                      // Fallback: inputFormat desconocido → navegar según type
+                      // (evita quedarse sin navegar y perder el tap del usuario)
+                      debugPrint('⚠️ inputFormat desconocido: ${test.test.inputFormat} para ${test.test.commonName}');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => test.test.type == '2'
+                              ? ResultDetailScreenType1(
+                                  eventTestId: test.id,
+                                  eventId: null,
+                                  title: widget.title,
+                                  date: widget.date,
+                                  location: widget.location,
+                                  eventName: test.test.officialName,
+                                  category: test.categoriesFormatted,
+                                  resultDate: widget.date,
+                                )
+                              : ResultDetailScreenType2(
+                                  eventTestId: test.id,
+                                  eventDate: jornadaDate,
+                                ),
+                        ),
+                      );
                     }
                   }
                 },
