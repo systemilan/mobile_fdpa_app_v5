@@ -13,6 +13,7 @@ import '../models/jornada.dart';
 import '../models/result_type1.dart';
 import '../models/result_type2.dart';
 import '../models/result_type3.dart';
+import '../models/athlete_search.dart';
 import '../models/calendar_activity.dart';
 
 /// Servicio para consumir la API de eventos
@@ -349,6 +350,83 @@ class EventService {
     } catch (e) {
       debugPrint('❌ Error fetching calendar activities: $e');
       debugPrint('❌ Stack trace: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  /// Buscar atleta por nombre dentro de un evento
+  Future<AthleteSearchResponse> searchAthlete(
+      String eventId, String query) async {
+    try {
+      final url = Uri.parse('$_baseUrl/public/events/$eventId/search-athlete')
+          .replace(queryParameters: {'q': query});
+
+      debugPrint('🔍 [EventService] searchAthlete GET $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(Environment.connectTimeout, onTimeout: () {
+        throw Exception('Timeout en searchAthlete');
+      });
+
+      debugPrint('📊 [EventService] searchAthlete status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        return AthleteSearchResponse.fromJson(jsonData);
+      }
+      throw Exception(
+          'Error ${response.statusCode} en searchAthlete: ${response.body}');
+    } catch (e) {
+      debugPrint('❌ [EventService] searchAthlete: $e');
+      rethrow;
+    }
+  }
+
+  /// Búsqueda global de atletas en todos los eventos
+  /// [query] nombre o apellido del atleta
+  /// [eventId] opcional: filtrar por evento específico
+  /// [limit] opcional: limitar resultados (default 50)
+  Future<AthleteSearchResponse> searchAthletesGlobal(
+    String query, {
+    String? eventId,
+    int limit = 50,
+  }) async {
+    try {
+      final params = <String, String>{'q': query, 'limit': '$limit'};
+      if (eventId != null && eventId.isNotEmpty) {
+        params['eventId'] = eventId;
+      }
+
+      final url = Uri.parse('${Environment.publicBaseUrl}/athletes/search')
+          .replace(queryParameters: params);
+
+      debugPrint('🔍 [EventService] searchAthletesGlobal GET $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(Environment.connectTimeout, onTimeout: () {
+        throw Exception('Timeout en searchAthletesGlobal');
+      });
+
+      debugPrint('📊 [EventService] searchAthletesGlobal status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        return AthleteSearchResponse.fromJson(jsonData);
+      }
+      throw Exception(
+          'Error ${response.statusCode} en searchAthletesGlobal: ${response.body}');
+    } catch (e) {
+      debugPrint('❌ [EventService] searchAthletesGlobal: $e');
       rethrow;
     }
   }

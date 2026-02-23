@@ -13,6 +13,7 @@ import '../../models/event.dart' as EventModel;
 import '../../models/event_list.dart';
 import '../../models/calendar_activity.dart';
 import '../../providers/theme_provider.dart';
+import 'global_athlete_search_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -543,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: _buildHeader(),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   FadeTransition(
                     opacity: _resultsFadeAnimation,
                     child: SlideTransition(
@@ -572,6 +573,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
+        ),
+      ),
+    ),
+  );
+  }
+
+  Widget _buildGlobalSearchBar() {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => GlobalAthleteSearchSheet(
+            eventService: _eventService,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDarkMode
+                ? Colors.white.withOpacity(0.1)
+                : Colors.black.withOpacity(0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.search,
+                color: isDarkMode ? Colors.white38 : Colors.black38,
+                size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Buscar atleta en todos los eventos...',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white38 : Colors.black38,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE74C3C).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.person_search,
+                  color: Color(0xFFE74C3C), size: 16),
+            ),
+          ],
         ),
       ),
     );
@@ -612,23 +670,68 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Federación Deportiva',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Federación Deportiva',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
                 ),
               ),
-              Text(
-                'Peruana de Atletismo',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Peruana de Atletismo',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
                 ),
               ),
             ],
+          ),
+        ),
+        // Botón de búsqueda (lupa)
+        GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => GlobalAthleteSearchSheet(
+                eventService: _eventService,
+              ),
+            );
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.black.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDarkMode
+                    ? Colors.white.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              Icons.search,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+              size: 20,
+            ),
           ),
         ),
         // Botón del menú (tuerca) con notificación de actualización
@@ -719,7 +822,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Últimos resultados',
               style: TextStyle(
                 color: const Color(0xFFE74C3C),
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -984,7 +1087,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   title,
                   style: TextStyle(
                     color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.left,
@@ -1054,7 +1157,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1D1F28) : Colors.white,
           borderRadius: BorderRadius.circular(15),
@@ -1077,32 +1180,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     title,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 22,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
                       color: isDark ? Colors.white60 : Colors.black45,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              width: 56,
-              height: 56,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: const Color(0xFFE74C3C).withOpacity(isDark ? 0.2 : 0.12),
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Icon(
                 icon,
                 color: const Color(0xFFE74C3C),
-                size: 28,
+                size: 22,
               ),
             ),
           ],
@@ -1257,7 +1360,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               day,
               style: TextStyle(
                 color: isNext ? Colors.white : const Color(0xFFE74C3C),
-                fontSize: 28,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1511,7 +1614,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               }(),
               style: TextStyle(
                 color: isNext ? Colors.white : const Color(0xFF1D1F28),
-                fontSize: 28,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),

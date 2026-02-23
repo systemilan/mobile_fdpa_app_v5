@@ -181,6 +181,8 @@ class Category {
 class EventTestResult {
   final String id;
   final String time;
+  final String? customName;
+  final String? displayName;
   final TestInfo test;
   final List<Gender> genders;
   final List<Category> categories;
@@ -189,6 +191,8 @@ class EventTestResult {
   EventTestResult({
     required this.id,
     required this.time,
+    this.customName,
+    this.displayName,
     required this.test,
     required this.genders,
     required this.categories,
@@ -199,6 +203,8 @@ class EventTestResult {
     return EventTestResult(
       id: json['id'] ?? '',
       time: json['time'] ?? '',
+      customName: json['customName'] as String?,
+      displayName: json['displayName'] as String?,
       test: TestInfo.fromJson(json['test'] as Map<String, dynamic>? ?? {}),
       genders: (json['genders'] as List<dynamic>?)
               ?.map((e) => Gender.fromJson(e as Map<String, dynamic>))
@@ -210,6 +216,13 @@ class EventTestResult {
           [],
       combinedEvent: json['combinedEvent'],
     );
+  }
+
+  /// Nombre a mostrar: customName si existe, si no officialName
+  String get displayedName {
+    if (customName != null && customName!.isNotEmpty) return customName!;
+    if (displayName != null && displayName!.isNotEmpty) return displayName!;
+    return test.officialName;
   }
 
   String get categoriesFormatted {

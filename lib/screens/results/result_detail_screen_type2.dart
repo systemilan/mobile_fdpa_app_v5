@@ -293,7 +293,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               // Contenido scrolleable
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+                  padding: EdgeInsets.fromLTRB(8, 8, 8, 24 + MediaQuery.of(context).padding.bottom),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -442,7 +442,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
             Expanded(
               flex: 7,
               child: Text(
-                eventTest.test.officialName,
+                eventTest.displayedName,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
@@ -511,9 +511,9 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
         ),
         const SizedBox(height: 4),
         Text(
-          eventTest.test.commonName.isNotEmpty 
-            ? eventTest.test.commonName 
-            : eventTest.test.officialName,
+          eventTest.test.commonName.isNotEmpty
+            ? eventTest.test.commonName
+            : eventTest.displayedName,
           style: const TextStyle(
             color: Color(0xFFE74C3C),
             fontSize: 22,
@@ -672,26 +672,29 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
   }
 
   Widget _buildSerieResults(ResultSeries serie) {
-    // Sort athletes by time (fastest first), DNS at the end
+    // Sort using position field from API (already ranked by server), DNS at the end
     final sortedResults = List<RaceAthleteResult>.from(serie.results);
     sortedResults.sort((a, b) {
-      if (a.isDNS && !b.isDNS) return 1;
-      if (!a.isDNS && b.isDNS) return -1;
-      if (a.isDNS && b.isDNS) return 0;
-      return (a.time ?? double.infinity).compareTo(b.time ?? double.infinity);
+      final aPos = a.position;
+      final bPos = b.position;
+      if (aPos == null && bPos == null) return 0;
+      if (aPos == null) return 1;  // DNS al final
+      if (bPos == null) return -1;
+      return aPos.compareTo(bPos);
     });
 
+    // Si algún atleta de la serie tiene tiempo cargado → resultados ya subidos
+    final bool hasLoadedResults = sortedResults.any((r) => r.time != null && r.time!.isNotEmpty);
+
     return Column(
-      children: sortedResults.asMap().entries.map((entry) {
-        final index = entry.key;
-        final athlete = entry.value;
-        final position = athlete.isDNS ? 0 : index + 1;
-        return _buildAthleteCard(athlete, position);
+      children: sortedResults.map((athlete) {
+        final position = athlete.position ?? 0;
+        return _buildAthleteCard(athlete, position, hasLoadedResults: hasLoadedResults);
       }).toList(),
     );
   }
 
-  Widget _buildAthleteCard(RaceAthleteResult athlete, int position) {
+  Widget _buildAthleteCard(RaceAthleteResult athlete, int position, {bool hasLoadedResults = false}) {
     final bool isDNS = athlete.isDNS;
     
     Color getPositionColor() {
@@ -773,7 +776,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        _isEventPast ? 'DNS' : '- - -',
+                        (hasLoadedResults || _isEventPast) ? 'DNS' : '- - -',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -827,7 +830,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                   // Información adicional
                   Text(
                     isDNS
-                        ? (_isEventPast ? 'No participó' : 'Aún sin participar')
+                        ? (hasLoadedResults || _isEventPast ? 'No participó' : 'Aún sin participar')
                         : 'Clasificado',
                     style: TextStyle(
                       color: isDNS ? Colors.white.withOpacity(0.4) : const Color(0xFF2ED573),
@@ -879,7 +882,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                         fontWeight: FontWeight.w700,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 3,
                     ),
                   ),
                 ],

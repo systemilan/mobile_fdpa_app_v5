@@ -279,7 +279,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               // Contenido scrolleable
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+                  padding: EdgeInsets.fromLTRB(8, 8, 8, 24 + MediaQuery.of(context).padding.bottom),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -434,7 +434,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
             Expanded(
               flex: 7,
               child: Text(
-                eventTest.test.officialName,
+                eventTest.displayedName,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
@@ -503,9 +503,9 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
         ),
         const SizedBox(height: 4),
         Text(
-          eventTest.test.commonName.isNotEmpty 
-            ? eventTest.test.commonName 
-            : eventTest.test.officialName,
+          eventTest.test.commonName.isNotEmpty
+            ? eventTest.test.commonName
+            : eventTest.displayedName,
           style: const TextStyle(
             color: Color(0xFFE74C3C),
             fontSize: 22,

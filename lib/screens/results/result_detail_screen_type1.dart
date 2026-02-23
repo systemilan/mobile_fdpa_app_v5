@@ -199,8 +199,8 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height * 0.15,
-                  maxHeight: MediaQuery.of(context).size.height * 0.28,
+                  minHeight: MediaQuery.of(context).size.height * 0.20,
+                  maxHeight: MediaQuery.of(context).size.height * 0.36,
                 ),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -254,7 +254,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               // Contenido scrolleable
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+                  padding: EdgeInsets.fromLTRB(8, 8, 8, 24 + MediaQuery.of(context).padding.bottom),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -381,7 +381,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
             Expanded(
               flex: 7,
               child: Text(
-                widget.title.replaceAll('\n', ' '),
+                widget.eventName.replaceAll('\n', ' '),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
@@ -450,10 +450,10 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
         ),
         const SizedBox(height: 4),
         Text(
-          widget.eventName,
+          widget.title.replaceAll('\n', ' '),
           style: const TextStyle(
             color: Color(0xFFE74C3C),
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
           maxLines: 1,
@@ -625,7 +625,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
   }
 
   Widget _buildEventTitle() {
-    final testName = _resultData?.eventTest.test.officialName ?? 'Prueba';
+    final testName = _resultData?.eventTest.displayedName ?? 'Prueba';
     final categories = _resultData?.eventTest.categoriesFormatted ?? '';
     
     return Row(

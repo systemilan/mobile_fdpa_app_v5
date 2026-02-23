@@ -106,6 +106,8 @@ class TestInfo {
 class ScheduledTest {
   final String id;
   final String? time; // Puede ser null
+  final String? customName;
+  final String? displayName;
   final TestInfo test;
   final List<Gender> genders;
   final List<Category> categories;
@@ -114,6 +116,8 @@ class ScheduledTest {
   ScheduledTest({
     required this.id,
     this.time,
+    this.customName,
+    this.displayName,
     required this.test,
     required this.genders,
     required this.categories,
@@ -124,7 +128,10 @@ class ScheduledTest {
     return ScheduledTest(
       id: json['id'] ?? '',
       time: json['time'], // Permitir null
+      customName: json['customName'] as String?,
+      displayName: json['displayName'] as String?,
       test: TestInfo.fromJson(json['test'] ?? {}),
+
       genders: (json['genders'] as List<dynamic>?)
               ?.map((item) => Gender.fromJson(item as Map<String, dynamic>))
               .toList() ??
@@ -141,11 +148,21 @@ class ScheduledTest {
     return {
       'id': id,
       'time': time,
+      'customName': customName,
+      'displayName': displayName,
       'test': test.toJson(),
       'genders': genders.map((g) => g.toJson()).toList(),
       'categories': categories.map((c) => c.toJson()).toList(),
       'combinedEvent': combinedEvent,
     };
+  }
+
+  // Helper para obtener el nombre a mostrar:
+  // Si tiene customName, lo usa; si tiene displayName, lo usa; si no, commonName
+  String get displayedName {
+    if (customName != null && customName!.isNotEmpty) return customName!;
+    if (displayName != null && displayName!.isNotEmpty) return displayName!;
+    return test.commonName;
   }
 
   // Helper para obtener categorías formateadas

@@ -45,10 +45,21 @@ class ResultType1Data {
     return series.expand((serie) => serie.results).toList();
   }
 
+  /// Convert time string ("SS.ss" or "MM:SS.ss") to seconds for sorting
+  static double _timeStringToSeconds(String t) {
+    if (t.contains(':')) {
+      final parts = t.split(':');
+      final minutes = double.tryParse(parts[0]) ?? 0;
+      final seconds = double.tryParse(parts[1]) ?? 0;
+      return minutes * 60 + seconds;
+    }
+    return double.tryParse(t) ?? double.infinity;
+  }
+
   /// Get all results sorted by time (fastest first)
   List<RaceAthleteResult> get rankedResults {
-    final validResults = allResults.where((r) => r.time != null).toList();
-    validResults.sort((a, b) => a.time!.compareTo(b.time!));
+    final validResults = allResults.where((r) => r.time != null && r.time!.isNotEmpty).toList();
+    validResults.sort((a, b) => ResultType1Data._timeStringToSeconds(a.time!).compareTo(ResultType1Data._timeStringToSeconds(b.time!)));
     return validResults;
   }
 }
@@ -56,6 +67,8 @@ class ResultType1Data {
 class EventTestResult {
   final String id;
   final String time;
+  final String? customName;
+  final String? displayName;
   final TestInfo test;
   final List<Gender> genders;
   final List<Category> categories;
@@ -64,6 +77,8 @@ class EventTestResult {
   EventTestResult({
     required this.id,
     required this.time,
+    this.customName,
+    this.displayName,
     required this.test,
     required this.genders,
     required this.categories,
@@ -74,6 +89,8 @@ class EventTestResult {
     return EventTestResult(
       id: json['id'] ?? '',
       time: json['time'] ?? '',
+      customName: json['customName'] as String?,
+      displayName: json['displayName'] as String?,
       test: TestInfo.fromJson(json['test']),
       genders: (json['genders'] as List<dynamic>?)
               ?.map((g) => Gender.fromJson(g))
@@ -85,6 +102,13 @@ class EventTestResult {
           [],
       combinedEvent: json['combinedEvent'],
     );
+  }
+
+  /// Nombre a mostrar: customName si existe, si no officialName
+  String get displayedName {
+    if (customName != null && customName!.isNotEmpty) return customName!;
+    if (displayName != null && displayName!.isNotEmpty) return displayName!;
+    return test.officialName;
   }
 
   String get gendersFormatted {
@@ -205,7 +229,7 @@ class RaceAthleteResult {
   final String? country;
   final String? birthDate;
   final int lane;
-  final double? time;
+  final String? time;
   final List<String> attempts;
   final List<String> winds;
   final String? bestMark;
@@ -237,7 +261,7 @@ class RaceAthleteResult {
       country: json['country'],
       birthDate: json['birthDate'],
       lane: json['lane'] ?? 0,
-      time: json['time'] != null ? (json['time'] as num).toDouble() : null,
+      time: json['time']?.toString(),
       attempts: (json['attempts'] as List<dynamic>?)?.map((a) => a.toString()).toList() ?? [],
       winds: (json['winds'] as List<dynamic>?)?.map((w) => w.toString()).toList() ?? [],
       bestMark: json['bestMark'],
@@ -248,22 +272,13 @@ class RaceAthleteResult {
 
   /// Check if the athlete did not start (DNS)
   bool get isDNS {
-    return time == null;
+    return time == null || time!.isEmpty;
   }
 
-  /// Get formatted time as MM:SS or SS.ss
+  /// Get formatted time - returns the value exactly as it comes from the API
   String get timeFormatted {
-    if (time == null) return '- - -';
-    
-    // If time is greater than 60 seconds, format as MM:SS
-    if (time! >= 60) {
-      final minutes = (time! / 60).floor();
-      final seconds = (time! % 60);
-      return '$minutes:${seconds.toStringAsFixed(2).padLeft(5, '0')}';
-    }
-    
-    // Otherwise format as SS.ss
-    return time!.toStringAsFixed(2);
+    if (time == null || time!.isEmpty) return '- - -';
+    return time!;
   }
 
   /// Get club formatted for display (splits team into lines)
@@ -279,7 +294,7 @@ class RaceAthleteResult {
     if (team.length > 6) {
       final words = team.split(' ');
       if (words.length > 1) {
-        return words.take(2).join('\n');
+        return words.take(3).join('\n');
       }
       // Split by 3 characters
       final parts = <String>[];

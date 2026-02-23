@@ -5,6 +5,7 @@ import '../results/result_detail_screen_type3.dart';
 import '../../services/event_service.dart';
 import '../../models/jornada.dart';
 import '../../config/environment.dart';
+import 'athlete_search_sheet.dart';
 
 class ChampionshipDetailScreen extends StatefulWidget {
   final String? eventId;
@@ -218,7 +219,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       child: _buildHeader(),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 16),
                   FadeTransition(
                     opacity: _titleFadeAnimation,
                     child: SlideTransition(
@@ -226,7 +227,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       child: _buildTitleSection(),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 16),
                   FadeTransition(
                     opacity: _searchFadeAnimation,
                     child: SlideTransition(
@@ -234,7 +235,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       child: _buildSearchBox(),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   FadeTransition(
                     opacity: _jornadasFadeAnimation,
                     child: SlideTransition(
@@ -346,7 +347,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                 widget.title.replaceAll('\n', ' '),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 36,
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                   letterSpacing: -0.5,
@@ -364,10 +365,10 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 64,
-                    height: 42,
+                    width: 48,
+                    height: 30,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.5),
@@ -377,7 +378,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       child: Row(
                         children: [
                           Expanded(
@@ -393,12 +394,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     widget.location,
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.end,
@@ -408,12 +409,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 8),
         Text(
           widget.date,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 16,
+            fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -528,8 +529,8 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(28),
-        margin: EdgeInsets.only(bottom: isExpanded ? 8 : 15),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: EdgeInsets.only(bottom: isExpanded ? 6 : 10),
         decoration: BoxDecoration(
           color: isExpanded ? null : Colors.white.withOpacity(0.06),
           gradient: isExpanded 
@@ -543,12 +544,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                 ],
               )
             : null,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: isExpanded ? [
             BoxShadow(
               color: const Color(0xFFC0392B).withOpacity(0.4),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ] : null,
         ),
@@ -563,7 +564,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                     titulo,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -573,12 +574,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                   child: Icon(
                     Icons.chevron_right,
                     color: Colors.white.withOpacity(0.7),
-                    size: 28,
+                    size: 20,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -586,7 +587,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                   turno,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.85),
-                    fontSize: 17,
+                    fontSize: 13,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -594,7 +595,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                   fecha,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.85),
-                    fontSize: 17,
+                    fontSize: 13,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -989,7 +990,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              test.test.commonName,
+                              test.displayedName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -1113,51 +1114,14 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
   }
 
   void _showSearchDialog() {
-    showDialog(
+    if (_eventId.isEmpty) return;
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1D1F28),
-        title: const Text(
-          'Buscar Atleta',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nombre del atleta...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE74C3C),
-            ),
-            child: const Text(
-              'Buscar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AthleteSearchSheet(
+        eventId: _eventId,
+        eventService: _eventService,
       ),
     );
   }

@@ -40,8 +40,8 @@ android {
         applicationId = "online.fdpa.mobile.app.twa"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 132
-        versionName = "1.3.2"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     buildTypes {
