@@ -2,7 +2,9 @@
 // Endpoint: /public/event-tests/{id}/results
 
 class FieldAthleteResult {
+  final int displayOrder;
   final int? position;
+  final String? athleteStatus;
   final String athleteId;
   final String name;
   final String team;
@@ -17,7 +19,9 @@ class FieldAthleteResult {
   final String eventType;
 
   FieldAthleteResult({
+    this.displayOrder = 0,
     this.position,
+    this.athleteStatus,
     required this.athleteId,
     required this.name,
     required this.team,
@@ -34,7 +38,9 @@ class FieldAthleteResult {
 
   factory FieldAthleteResult.fromJson(Map<String, dynamic> json) {
     return FieldAthleteResult(
-      position: json['position'],
+      displayOrder: json['displayOrder'] as int? ?? 0,
+      position: json['position'] as int?,
+      athleteStatus: json['athleteStatus']?.toString(),
       athleteId: json['athleteId']?.toString() ?? '',
       name: json['name'] ?? '',
       team: json['team'] ?? '',
@@ -54,6 +60,13 @@ class FieldAthleteResult {
       status: json['status'] ?? false,
       eventType: json['eventType'] ?? '',
     );
+  }
+
+  /// Texto de posición: número si tiene posición, athleteStatus si es DNS/DNF/NH/NM, '-' si nada
+  String get positionText {
+    if (position != null) return '${position}°';
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return athleteStatus!;
+    return '-';
   }
 
   String get bestMarkFormatted {
@@ -218,9 +231,10 @@ class EventTestResult {
     );
   }
 
-  /// Nombre a mostrar: customName si existe, si no officialName
+  /// Nombre a mostrar: customName → commonName → displayName → officialName
   String get displayedName {
     if (customName != null && customName!.isNotEmpty) return customName!;
+    if (test.commonName.isNotEmpty) return test.commonName;
     if (displayName != null && displayName!.isNotEmpty) return displayName!;
     return test.officialName;
   }

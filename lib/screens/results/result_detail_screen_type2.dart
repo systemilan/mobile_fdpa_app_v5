@@ -672,18 +672,10 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
   }
 
   Widget _buildSerieResults(ResultSeries serie) {
-    // Sort using position field from API (already ranked by server), DNS at the end
-    final sortedResults = List<RaceAthleteResult>.from(serie.results);
-    sortedResults.sort((a, b) {
-      final aPos = a.position;
-      final bPos = b.position;
-      if (aPos == null && bPos == null) return 0;
-      if (aPos == null) return 1;  // DNS al final
-      if (bPos == null) return -1;
-      return aPos.compareTo(bPos);
-    });
+    // Ordenar por displayOrder (ya viene ordenado del backend, esto es por seguridad)
+    final sortedResults = List<RaceAthleteResult>.from(serie.results)
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
-    // Si algún atleta de la serie tiene tiempo cargado → resultados ya subidos
     final bool hasLoadedResults = sortedResults.any((r) => r.time != null && r.time!.isNotEmpty);
 
     return Column(
@@ -748,7 +740,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        'Puesto $position',
+                        'Puesto ${athlete.positionText}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,

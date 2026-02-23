@@ -501,19 +501,21 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          eventTest.test.commonName.isNotEmpty
-            ? eventTest.test.commonName
-            : eventTest.displayedName,
-          style: const TextStyle(
-            color: Color(0xFFE74C3C),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+        // Subtítulo solo si commonName es diferente al nombre mostrado
+        if (eventTest.test.commonName.isNotEmpty &&
+            eventTest.test.commonName != eventTest.displayedName) ...[
+          const SizedBox(height: 2),
+          Text(
+            eventTest.test.commonName,
+            style: const TextStyle(
+              color: Color(0xFFE74C3C),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        ],
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -664,25 +666,19 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
   }
 
   Widget _buildSerieResults(ResultSeries serie) {
-    // Sort athletes by best height (descending)
-    final sortedResults = List<HeightAthleteResult>.from(serie.results);
-    sortedResults.sort((a, b) {
-      final aHeight = double.tryParse(a.bestHeight ?? '0') ?? 0.0;
-      final bHeight = double.tryParse(b.bestHeight ?? '0') ?? 0.0;
-      return bHeight.compareTo(aHeight);
-    });
+    // Ordenar por displayOrder (ya viene ordenado del backend, esto es por seguridad)
+    final sortedResults = List<HeightAthleteResult>.from(serie.results)
+      ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
     return Column(
-      children: sortedResults.asMap().entries.map((entry) {
-        final index = entry.key;
-        final athlete = entry.value;
-        final position = index + 1;
-        return _buildAthleteCard(athlete, position);
+      children: sortedResults.map((athlete) {
+        return _buildAthleteCard(athlete);
       }).toList(),
     );
   }
 
-  Widget _buildAthleteCard(HeightAthleteResult athlete, int position) {
+  Widget _buildAthleteCard(HeightAthleteResult athlete) {
+    final int position = athlete.position ?? 0;
     Color getPositionColor() {
       switch (position) {
         case 1: return const Color(0xFF2ED573);
@@ -742,7 +738,9 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Puesto $position',
+                      athlete.position != null
+                          ? 'Puesto ${athlete.position}°'
+                          : (athlete.athleteStatus ?? '--'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
@@ -755,7 +753,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      athlete.bestHeight ?? '--',
+                      athlete.bestMark ?? athlete.bestHeight ?? '--',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,

@@ -573,18 +573,11 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
     if (_resultData == null) return [];
     
     return _resultData!.series.map((serie) {
-      // Mostrar todos los atletas con nombre; posicionados primero, luego sin posición
+      // Ordenar por displayOrder (ya viene ordenado del backend, esto es por seguridad)
       final sortedResults = serie.results
           .where((r) => r.name.isNotEmpty)
           .toList()
-        ..sort((a, b) {
-          final posA = a.position;
-          final posB = b.position;
-          if (posA != null && posB != null) return posA.compareTo(posB);
-          if (posA != null) return -1; // con posición va primero
-          if (posB != null) return 1;
-          return 0;
-        });
+        ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
       
       if (sortedResults.isEmpty) return const SizedBox.shrink();
       
@@ -612,6 +605,8 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               positionColor = Colors.white.withOpacity(0.6);
             } else if (athlete.position == 3) {
               positionColor = Colors.white.withOpacity(0.4);
+            } else if (athlete.position == null) {
+              positionColor = Colors.grey.withOpacity(0.3);
             } else {
               positionColor = Colors.white.withOpacity(0.3);
             }
@@ -706,7 +701,9 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      athlete.position != null ? 'Puesto ${athlete.position}' : '-',
+                      athlete.position != null
+                          ? 'Puesto ${athlete.position}°'
+                          : (athlete.athleteStatus ?? '-'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,

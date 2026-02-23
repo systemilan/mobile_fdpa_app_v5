@@ -106,9 +106,10 @@ class EventTestResult {
     );
   }
 
-  /// Nombre a mostrar: customName si existe, si no officialName
+  /// Nombre a mostrar: customName → commonName → displayName → officialName
   String get displayedName {
     if (customName != null && customName!.isNotEmpty) return customName!;
+    if (test.commonName.isNotEmpty) return test.commonName;
     if (displayName != null && displayName!.isNotEmpty) return displayName!;
     return test.officialName;
   }
@@ -224,7 +225,9 @@ class ResultSeries {
 }
 
 class HeightAthleteResult {
+  final int displayOrder;
   final int? position;
+  final String? athleteStatus;
   final String athleteId;
   final String name;
   final String team;
@@ -239,7 +242,9 @@ class HeightAthleteResult {
   final String eventType;
 
   HeightAthleteResult({
+    this.displayOrder = 0,
     this.position,
+    this.athleteStatus,
     required this.athleteId,
     required this.name,
     required this.team,
@@ -261,24 +266,12 @@ class HeightAthleteResult {
       
       return attemptsJson.map((attemptStr) {
         if (attemptStr is String) {
-          try {
-            // Parse the JSON string like: {"height":"1.88","result":"---"}
-            final attemptJson = attemptStr.replaceAll('{', '{"')
-                .replaceAll(':', '":"')
-                .replaceAll(',', '","')
-                .replaceAll('}', '"}')
-                .replaceAll('""', '"');
-            
-            // Simple parse
-            final heightMatch = RegExp(r'"height":"([^"]+)"').firstMatch(attemptStr);
-            final resultMatch = RegExp(r'"result":"([^"]*)"').firstMatch(attemptStr);
-            
-            final height = heightMatch?.group(1) ?? '';
-            final result = resultMatch?.group(1) ?? '';
-            
+          // Formato: "height:result" ej. "5.14:X0" o "4.59:——"
+          final colonIdx = attemptStr.indexOf(':');
+          if (colonIdx > 0) {
+            final height = attemptStr.substring(0, colonIdx);
+            final result = attemptStr.substring(colonIdx + 1);
             return HeightAttempt(height: height, result: result);
-          } catch (e) {
-            return HeightAttempt(height: '', result: '');
           }
         }
         return HeightAttempt(height: '', result: '');
@@ -286,21 +279,33 @@ class HeightAthleteResult {
     }
 
     return HeightAthleteResult(
-      position: json['position'],
+      displayOrder: json['displayOrder'] as int? ?? 0,
+      position: json['position'] as int?,
+      athleteStatus: json['athleteStatus']?.toString(),
       athleteId: json['athleteId']?.toString() ?? '',
       name: json['name'] ?? '',
       team: json['team'] ?? '',
       country: json['country'],
       birthDate: json['birthDate'],
       lane: json['lane'] ?? 0,
-      time: json['time'],
+      time: json['time']?.toString(),
       attempts: parseAttempts(json['attempts']),
       winds: (json['winds'] as List<dynamic>?)?.map((w) => w.toString()).toList() ?? [],
-      bestMark: json['bestMark'],
+      bestMark: json['bestMark']?.toString(),
       status: json['status'] ?? true,
       eventType: json['eventType'] ?? '',
     );
   }
+
+  /// Texto de posición: número si tiene posición, athleteStatus si es DNS/DNF/NH/NM
+  String get positionText {
+    if (position != null) return '${position}°';
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return athleteStatus!;
+    return '--';
+  }
+
+  /// True si no tiene posición competitiva (DNS/DNF/DQ/NH/NM)
+  bool get isDNS => position == null;
 
   /// Get the best cleared height (highest O, XO, XXO, etc.)
   String? get bestHeight {
@@ -351,19 +356,31 @@ class HeightAttempt {
     required this.result,
   });
 
-  /// Check if the height was cleared (O, XO, XXO, -XO, X-O, etc.)
+  /// Check if the height was cleared (O after any X's: O, XO, XXO)
   bool get isCleared {
-    return result.contains('O') && !result.startsWith('X') && result != 'XXX';
+    if (result.isEmpty) return false;
+    final last = result[result.length - 1];
+    // 'O' (letra) o '0' (dígito, usado en algunos sistemas de datos)
+    return last == 'O' || last == 'o' || last == '0';
   }
 
-  /// Check if the height was failed (XXX or three X's)
+  /// Check if the height was failed (ends with X = no clear)
   bool get isFailed {
-    return result == 'XXX' || result.replaceAll('-', '').length >= 3;
+    if (result.isEmpty) return false;
+    final last = result[result.length - 1];
+    return last == 'X' || last == 'x';
   }
 
-  /// Check if the athlete passed/skipped this height (---, --, etc.)
+  /// Check if the athlete passed/skipped this height (——, –, -, etc.)
   bool get isPassed {
-    return result.replaceAll('-', '').isEmpty && result.isNotEmpty;
+    if (result.isEmpty) return false;
+    // Manejar em-dashes (——), en-dashes (–) y guiones normales (-)
+    final stripped = result
+        .replaceAll('\u2014', '') // em-dash —
+        .replaceAll('\u2013', '') // en-dash –
+        .replaceAll('-', '')
+        .trim();
+    return stripped.isEmpty;
   }
 
   /// Check if DNS (Did Not Start)

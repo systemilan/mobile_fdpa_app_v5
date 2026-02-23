@@ -158,11 +158,12 @@ class ScheduledTest {
   }
 
   // Helper para obtener el nombre a mostrar:
-  // Si tiene customName, lo usa; si tiene displayName, lo usa; si no, commonName
+  // Prioridad: customName → commonName → displayName → officialName
   String get displayedName {
     if (customName != null && customName!.isNotEmpty) return customName!;
+    if (test.commonName.isNotEmpty) return test.commonName;
     if (displayName != null && displayName!.isNotEmpty) return displayName!;
-    return test.commonName;
+    return test.officialName;
   }
 
   // Helper para obtener categorías formateadas

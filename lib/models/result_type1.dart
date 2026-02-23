@@ -104,9 +104,10 @@ class EventTestResult {
     );
   }
 
-  /// Nombre a mostrar: customName si existe, si no officialName
+  /// Nombre a mostrar: customName → commonName → displayName → officialName
   String get displayedName {
     if (customName != null && customName!.isNotEmpty) return customName!;
+    if (test.commonName.isNotEmpty) return test.commonName;
     if (displayName != null && displayName!.isNotEmpty) return displayName!;
     return test.officialName;
   }
@@ -222,7 +223,9 @@ class ResultSeries {
 }
 
 class RaceAthleteResult {
+  final int displayOrder;
   final int? position;
+  final String? athleteStatus;
   final String athleteId;
   final String name;
   final String team;
@@ -237,7 +240,9 @@ class RaceAthleteResult {
   final String eventType;
 
   RaceAthleteResult({
+    this.displayOrder = 0,
     this.position,
+    this.athleteStatus,
     required this.athleteId,
     required this.name,
     required this.team,
@@ -254,7 +259,9 @@ class RaceAthleteResult {
 
   factory RaceAthleteResult.fromJson(Map<String, dynamic> json) {
     return RaceAthleteResult(
-      position: json['position'],
+      displayOrder: json['displayOrder'] as int? ?? 0,
+      position: json['position'] as int?,
+      athleteStatus: json['athleteStatus']?.toString(),
       athleteId: json['athleteId']?.toString() ?? '',
       name: json['name'] ?? '',
       team: json['team'] ?? '',
@@ -264,15 +271,22 @@ class RaceAthleteResult {
       time: json['time']?.toString(),
       attempts: (json['attempts'] as List<dynamic>?)?.map((a) => a.toString()).toList() ?? [],
       winds: (json['winds'] as List<dynamic>?)?.map((w) => w.toString()).toList() ?? [],
-      bestMark: json['bestMark'],
+      bestMark: json['bestMark']?.toString(),
       status: json['status'] ?? true,
       eventType: json['eventType'] ?? '',
     );
   }
 
-  /// Check if the athlete did not start (DNS)
+  /// Texto de posición: número si tiene posición, athleteStatus si es DNS/DNF/NH/NM
+  String get positionText {
+    if (position != null) return '${position}°';
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return athleteStatus!;
+    return '- - -';
+  }
+
+  /// True si no tiene posición competitiva (DNS/DNF/DQ/NH/NM)
   bool get isDNS {
-    return time == null || time!.isEmpty;
+    return position == null;
   }
 
   /// Get formatted time - returns the value exactly as it comes from the API
