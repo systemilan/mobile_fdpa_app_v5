@@ -1,11 +1,24 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../results/result_detail_screen_type1.dart';
 import '../results/result_detail_screen_type2.dart';
 import '../results/result_detail_screen_type3.dart';
 import '../../services/event_service.dart';
+import '../../services/socket_service.dart';
 import '../../models/jornada.dart';
 import '../../config/environment.dart';
 import 'athlete_search_sheet.dart';
+
+/// Agrupación de ScheduledTests que comparten la misma prueba (test.id)
+class _TestGroup {
+  final String key;
+  final List<ScheduledTest> tests;
+  const _TestGroup({required this.key, required this.tests});
+
+  /// Se muestra como grupo colapsable si hay más de 2 instancias
+  bool get isGrouped => tests.length > 2;
+  ScheduledTest get first => tests.first;
+}
 
 class ChampionshipDetailScreen extends StatefulWidget {
   final String? eventId;
@@ -35,7 +48,13 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
   
   // Estado de expansión de jornadas
   int? _expandedJornadaIndex;
-  
+
+  // Grupos de pruebas expandidos dentro de una jornada. Clave: "${jornadaIdx}_${testId}"
+  final Set<String> _expandedTestGroups = {};
+
+  // Suscripciones realtime
+  final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
+
   // Estado para jornadas de la API
   final EventService _eventService = EventService();
   List<Jornada> _jornadas = [];
@@ -150,6 +169,9 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
       });
     }
 
+    // Suscribir a eventos realtime
+    _subscribeToSocket();
+
     // Iniciar animaciones con delay
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
@@ -158,6 +180,33 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
         _staggeredController.forward();
       }
     });
+  }
+
+  /// Suscribirse a eventos realtime: recarga jornadas cuando el backend
+  /// notifica cambios en pruebas o jornadas de este evento.
+  void _subscribeToSocket() {
+    final eventId = widget.eventId;
+    if (eventId == null) return;
+    final socket = SocketService();
+    _socketSubs
+      ..add(socket.on('eventTest:created').listen((d) {
+        if (mounted && d['eventId'] == eventId) _loadJornadas();
+      }))
+      ..add(socket.on('eventTest:updated').listen((d) {
+        if (mounted && d['eventId'] == eventId) _loadJornadas();
+      }))
+      ..add(socket.on('eventTest:deleted').listen((d) {
+        if (mounted) _loadJornadas();
+      }))
+      ..add(socket.on('eventTest:nameUpdated').listen((d) {
+        if (mounted) _loadJornadas();
+      }))
+      ..add(socket.on('eventJornada:created').listen((d) {
+        if (mounted && d['eventId'] == eventId) _loadJornadas();
+      }))
+      ..add(socket.on('eventJornada:deleted').listen((d) {
+        if (mounted) _loadJornadas();
+      }));
   }
 
   /// Cargar jornadas de la API
@@ -191,6 +240,10 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
 
   @override
   void dispose() {
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
     _fadeController.dispose();
     _slideController.dispose();
     _staggeredController.dispose();
@@ -202,45 +255,90 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF040512),
       body: SafeArea(
+        top: false,
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-                  FadeTransition(
-                    opacity: _headerFadeAnimation,
-                    child: SlideTransition(
-                      position: _headerSlideAnimation,
-                      child: _buildHeader(),
-                    ),
+                  // ── Zona con imagen de fondo ──
+                  Stack(
+                    children: [
+                      // Imagen de fondo
+                      SizedBox(
+                        width: double.infinity,
+                        height: 190 + MediaQuery.of(context).padding.top,
+                        child: Image.asset(
+                          'assets/images/botomevent.jpg',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      // Overlay degradado de abajo hacia arriba
+                      Container(
+                        height: 190 + MediaQuery.of(context).padding.top,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0.0, 0.4, 1.0],
+                            colors: [
+                              Color(0xCC040512),
+                              Color(0xAA040512),
+                              Color(0xFF040512),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Contenido encima de la imagen
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            FadeTransition(
+                              opacity: _headerFadeAnimation,
+                              child: SlideTransition(
+                                position: _headerSlideAnimation,
+                                child: _buildHeader(),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FadeTransition(
+                              opacity: _titleFadeAnimation,
+                              child: SlideTransition(
+                                position: _titleSlideAnimation,
+                                child: _buildTitleSection(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            FadeTransition(
+                              opacity: _searchFadeAnimation,
+                              child: SlideTransition(
+                                position: _searchSlideAnimation,
+                                child: _buildSearchBox(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  FadeTransition(
-                    opacity: _titleFadeAnimation,
-                    child: SlideTransition(
-                      position: _titleSlideAnimation,
-                      child: _buildTitleSection(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FadeTransition(
-                    opacity: _searchFadeAnimation,
-                    child: SlideTransition(
-                      position: _searchSlideAnimation,
-                      child: _buildSearchBox(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FadeTransition(
-                    opacity: _jornadasFadeAnimation,
-                    child: SlideTransition(
-                      position: _jornadasSlideAnimation,
-                      child: _buildJornadasList(),
+                  // ── Jornadas (sin imagen) ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
+                    child: FadeTransition(
+                      opacity: _jornadasFadeAnimation,
+                      child: SlideTransition(
+                        position: _jornadasSlideAnimation,
+                        child: _buildJornadasList(),
+                      ),
                     ),
                   ),
                 ],
@@ -338,7 +436,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Título - 70%
             Expanded(
@@ -347,7 +445,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                 widget.title.replaceAll('\n', ' '),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                   letterSpacing: -0.5,
@@ -442,7 +540,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
               'Buscar atleta',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -497,15 +595,33 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
           )
         ];
         
-        // Si está expandida, agregar las pruebas debajo con animaciones
+        // Si está expandida, agrupar pruebas por tipo y mostrarlas
         if (isExpanded && jornada.tests.isNotEmpty) {
-          widgets.addAll(
-            jornada.tests.asMap().entries.map((testEntry) {
-              final testIndex = testEntry.key;
-              final test = testEntry.value;
-              return _buildAnimatedTestCard(test, testIndex, jornadaDate: jornada.date);
-            }).toList()
-          );
+          final groups = _groupTestsByPrueba(jornada.tests);
+          var displayIndex = 0;
+          for (final group in groups) {
+            final groupKey = '${index}_${group.key}';
+            if (group.isGrouped) {
+              // Tarjeta colapsable para pruebas con más de 2 categorías
+              widgets.add(_buildGroupedTestCard(
+                group, displayIndex++,
+                groupKey: groupKey,
+                jornadaDate: jornada.date,
+              ));
+              if (_expandedTestGroups.contains(groupKey)) {
+                widgets.addAll(
+                  group.tests.asMap().entries.map((e) =>
+                    _buildTestSubItemRow(e.value, e.key, jornadaDate: jornada.date),
+                  ),
+                );
+              }
+            } else {
+              // Mostrar individualmente si son 1 o 2 instancias
+              for (final t in group.tests) {
+                widgets.add(_buildAnimatedTestCard(t, displayIndex++, jornadaDate: jornada.date));
+              }
+            }
+          }
         }
         
         return widgets;
@@ -529,8 +645,8 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        margin: EdgeInsets.only(bottom: isExpanded ? 6 : 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: EdgeInsets.only(bottom: isExpanded ? 5 : 8),
         decoration: BoxDecoration(
           color: isExpanded ? null : Colors.white.withOpacity(0.06),
           gradient: isExpanded 
@@ -564,7 +680,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                     titulo,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -604,6 +720,346 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
           ],
         ),
       ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Navegación centralizada para reutilizar en cards individuales y sub-items
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _navigateToTest(ScheduledTest test, String jornadaDate) {
+    final isHistorical = _isHistoricalEvent || test.id.startsWith('hist-test-');
+    final eventIdToPass = isHistorical ? _eventId : null;
+
+    if (Environment.enableLogs) {
+      print('🎯 Test clicked: ${test.test.commonName}');
+      print('   - Test ID: ${test.id}');
+      print('   - Is Historical: $isHistorical');
+      print('   - Event ID: $eventIdToPass');
+      print('   - Input Format: ${test.test.inputFormat}');
+    }
+
+    if (isHistorical) {
+      if (test.test.inputFormat == 'tiempo' || test.test.inputFormat == '1' || test.test.type == 'track') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType2(
+            eventTestId: test.id, eventId: eventIdToPass, eventDate: jornadaDate)));
+      } else if (test.test.inputFormat == 'altura' || test.test.inputFormat == '2') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType3(
+            eventTestId: test.id, eventId: eventIdToPass, eventDate: jornadaDate)));
+      } else if (test.test.inputFormat == 'intentos' || test.test.inputFormat == '3' || test.test.type == 'field') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType1(
+            eventTestId: test.id, eventId: eventIdToPass,
+            title: widget.title, date: widget.date, location: widget.location,
+            eventName: test.test.officialName, category: test.categoriesFormatted,
+            resultDate: widget.date)));
+      } else {
+        if (test.test.type == 'track') {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ResultDetailScreenType2(eventTestId: test.id, eventId: eventIdToPass)));
+        } else {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ResultDetailScreenType1(
+              eventTestId: test.id, eventId: eventIdToPass,
+              title: widget.title, date: widget.date, location: widget.location,
+              eventName: test.test.officialName, category: test.categoriesFormatted,
+              resultDate: widget.date)));
+        }
+      }
+    } else {
+      if (test.test.inputFormat == '1') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType2(eventTestId: test.id, eventDate: jornadaDate)));
+      } else if (test.test.inputFormat == '2') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType3(eventTestId: test.id, eventDate: jornadaDate)));
+      } else if (test.test.inputFormat == '3') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => ResultDetailScreenType1(
+            eventTestId: test.id, eventId: null,
+            title: widget.title, date: widget.date, location: widget.location,
+            eventName: test.test.officialName, category: test.categoriesFormatted,
+            resultDate: widget.date)));
+      } else {
+        debugPrint('⚠️ inputFormat desconocido: ${test.test.inputFormat} para ${test.test.commonName}');
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => test.test.type == '2'
+              ? ResultDetailScreenType1(
+                  eventTestId: test.id, eventId: null,
+                  title: widget.title, date: widget.date, location: widget.location,
+                  eventName: test.test.officialName, category: test.categoriesFormatted,
+                  resultDate: widget.date)
+              : ResultDetailScreenType2(eventTestId: test.id, eventDate: jornadaDate)));
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Agrupación de tests
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Agrupa los ScheduledTests por test.id preservando el orden original.
+  List<_TestGroup> _groupTestsByPrueba(List<ScheduledTest> tests) {
+    final Map<String, List<ScheduledTest>> map = {};
+    for (final t in tests) {
+      final key = t.test.id.isNotEmpty ? t.test.id : t.test.officialName;
+      (map[key] ??= []).add(t);
+    }
+    return map.entries.map((e) => _TestGroup(key: e.key, tests: e.value)).toList();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tarjeta colapsable para grupos con más de 2 categorías
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildGroupedTestCard(
+    _TestGroup group,
+    int index, {
+    required String groupKey,
+    String jornadaDate = '',
+  }) {
+    final isExpanded = _expandedTestGroups.contains(groupKey);
+    final first = group.first;
+    final count = group.tests.length;
+
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 200 + (index * 70)),
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutBack,
+      builder: (context, value, _) {
+        final v = value.clamp(0.0, 1.0);
+        return Transform.translate(
+          offset: Offset(0, (1 - v) * 24),
+          child: Opacity(
+            opacity: v,
+            child: Transform.scale(
+              scale: 0.85 + 0.15 * v,
+              child: GestureDetector(
+                onTap: () => setState(() {
+                  isExpanded
+                      ? _expandedTestGroups.remove(groupKey)
+                      : _expandedTestGroups.add(groupKey);
+                }),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: isExpanded
+                        ? const Color(0xFFE74C3C).withOpacity(0.10)
+                        : Colors.white.withOpacity(0.06 * v),
+                    borderRadius: BorderRadius.circular(16),
+                    border: isExpanded
+                        ? Border.all(
+                            color: const Color(0xFFE74C3C).withOpacity(0.35),
+                            width: 1,
+                          )
+                        : null,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      children: [
+                        // Hora
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE74C3C).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            first.time != null && first.time!.length >= 5
+                                ? first.time!.substring(0, 5)
+                                : '--:--',
+                            style: const TextStyle(
+                              color: Color(0xFFE74C3C),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        // Nombre + contador de categorías
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                first.displayedName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE74C3C).withOpacity(0.18),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      '$count categorías',
+                                      style: const TextStyle(
+                                        color: Color(0xFFE74C3C),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Builder(builder: (_) {
+                                    final ceShortName = group.tests
+                                        .map((t) => _getCombinedEventShortName(t.combinedEvent))
+                                        .firstWhere((s) => s != null, orElse: () => null);
+                                    if (ceShortName == null) return const SizedBox.shrink();
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFB300).withOpacity(0.18),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: const Color(0xFFFFB300).withOpacity(0.55),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          ceShortName,
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFB300),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Chevron animado
+                        AnimatedRotation(
+                          turns: isExpanded ? 0.25 : 0,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: Colors.white.withOpacity(0.65),
+                            size: 22,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Fila individual dentro de un grupo expandido
+  Widget _buildTestSubItemRow(ScheduledTest test, int index, {String jornadaDate = ''}) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 120 + (index * 45)),
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      curve: Curves.easeOut,
+      builder: (context, value, _) {
+        final v = value.clamp(0.0, 1.0);
+        return Opacity(
+          opacity: v,
+          child: Transform.translate(
+            offset: Offset(16 * (1 - v), 0),
+            child: GestureDetector(
+              onTap: () => _navigateToTest(test, jornadaDate),
+              child: Container(
+                margin: const EdgeInsets.only(left: 20, bottom: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.07),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Chip categoría
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF13142A),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        test.categoriesFormatted,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _getGenderLabel(test.genders),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.65),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (test.combinedEvent != null) ...[  
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFB300).withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFFB300).withOpacity(0.55),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          _getCombinedEventShortName(test.combinedEvent) ?? '',
+                          style: const TextStyle(
+                            color: Color(0xFFFFB300),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white.withOpacity(0.28),
+                      size: 13,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -789,172 +1245,14 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
             child: Transform.scale(
               scale: 0.8 + (0.2 * clampedValue),
               child: GestureDetector(
-                onTap: () {
-                  // Determinar si es evento histórico
-                  final isHistorical = _isHistoricalEvent || test.id.startsWith('hist-test-');
-                  final eventIdToPass = isHistorical ? _eventId : null;
-                  
-                  if (Environment.enableLogs) {
-                    print('🎯 Test clicked: ${test.test.commonName}');
-                    print('   - Test ID: ${test.id}');
-                    print('   - Is Historical: $isHistorical');
-                    print('   - Event ID: $eventIdToPass');
-                    print('   - Input Format: ${test.test.inputFormat}');
-                  }
-                  
-                  // Navegar según el inputFormat de la prueba
-                  // Para eventos históricos, usar lógica flexible con inputFormat texto
-                  if (isHistorical) {
-                    // Lógica específica para eventos históricos que pueden usar inputFormat como texto
-                    if (test.test.inputFormat == 'tiempo' || test.test.inputFormat == '1' || test.test.type == 'track') {
-                      // Carreras: 100m, 200m, 400m, etc.
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType2(
-                            eventTestId: test.id,
-                            eventId: eventIdToPass, // eventId requerido para históricos
-                            eventDate: jornadaDate,
-                          ),
-                        ),
-                      );
-                    } else if (test.test.inputFormat == 'altura' || test.test.inputFormat == '2') {
-                      // Pruebas de altura: salto alto, garrocha
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType3(
-                            eventTestId: test.id,
-                            eventId: eventIdToPass, // eventId requerido para históricos
-                            eventDate: jornadaDate,
-                          ),
-                        ),
-                      );
-                    } else if (test.test.inputFormat == 'intentos' || test.test.inputFormat == '3' || test.test.type == 'field') {
-                      // Lanzamientos/saltos con serie de intentos
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType1(
-                            eventTestId: test.id,
-                            eventId: eventIdToPass, // eventId requerido para históricos
-                            title: widget.title,
-                            date: widget.date,
-                            location: widget.location,
-                            eventName: test.test.officialName,
-                            category: test.categoriesFormatted,
-                            resultDate: widget.date,
-                          ),
-                        ),
-                      );
-                    } else {
-                      // Fallback para eventos históricos con formatos no reconocidos
-                      if (test.test.type == 'track') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ResultDetailScreenType2(
-                              eventTestId: test.id,
-                              eventId: eventIdToPass,
-                            ),
-                          ),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ResultDetailScreenType1(
-                              eventTestId: test.id,
-                              eventId: eventIdToPass,
-                              title: widget.title,
-                              date: widget.date,
-                              location: widget.location,
-                              eventName: test.test.officialName,
-                              category: test.categoriesFormatted,
-                              resultDate: widget.date,
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  } else {
-                    // Lógica ORIGINAL para eventos actuales (no históricos)
-                    // Mantener exactamente como estaba antes para compatibilidad
-                    if (test.test.inputFormat == '1') {
-                      // inputFormat 1: Carreras (100m, 200m, 400m, etc.)
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType2(
-                            eventTestId: test.id,
-                            eventDate: jornadaDate,
-                            // NO pasar eventId para eventos actuales
-                          ),
-                        ),
-                      );
-                    } else if (test.test.inputFormat == '2') {
-                      // inputFormat 2: Pruebas de altura (salto alto, garrocha)
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType3(
-                            eventTestId: test.id,
-                            eventDate: jornadaDate,
-                            // NO pasar eventId para eventos actuales
-                          ),
-                        ),
-                      );
-                    } else if (test.test.inputFormat == '3') {
-                      // inputFormat 3: Lanzamientos/saltos con serie de intentos
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ResultDetailScreenType1(
-                            eventTestId: test.id,
-                            eventId: null, // NO pasar eventId para eventos actuales
-                            title: widget.title,
-                            date: widget.date,
-                            location: widget.location,
-                            eventName: test.test.officialName,
-                            category: test.categoriesFormatted,
-                            resultDate: widget.date,
-                          ),
-                        ),
-                      );
-                    } else {
-                      // Fallback: inputFormat desconocido → navegar según type
-                      // (evita quedarse sin navegar y perder el tap del usuario)
-                      debugPrint('⚠️ inputFormat desconocido: ${test.test.inputFormat} para ${test.test.commonName}');
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => test.test.type == '2'
-                              ? ResultDetailScreenType1(
-                                  eventTestId: test.id,
-                                  eventId: null,
-                                  title: widget.title,
-                                  date: widget.date,
-                                  location: widget.location,
-                                  eventName: test.test.officialName,
-                                  category: test.categoriesFormatted,
-                                  resultDate: widget.date,
-                                )
-                              : ResultDetailScreenType2(
-                                  eventTestId: test.id,
-                                  eventDate: jornadaDate,
-                                ),
-                        ),
-                      );
-                    }
-                  }
-                },
+                onTap: () => _navigateToTest(test, jornadaDate),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  margin: const EdgeInsets.only(bottom: 6),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(backgroundOpacity),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(shadowOpacity),
@@ -967,10 +1265,10 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                     children: [
                       // Hora de la prueba
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE74C3C).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           test.time != null && test.time!.length >= 5 
@@ -978,12 +1276,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                             : (test.time ?? '--:--'), // HH:MM o --:-- si es null
                           style: const TextStyle(
                             color: Color(0xFFE74C3C),
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 10),
                       // Información de la prueba
                       Expanded(
                         child: Column(
@@ -993,29 +1291,57 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                               test.displayedName,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               test.categoriesFormatted,
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.7),
-                                fontSize: 14,
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Género
-                      Text(
-                        _getGenderLabel(test.genders),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      // Género + chip combinedEvent encima
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (test.combinedEvent != null) ...[  
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFB300).withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFFFB300).withOpacity(0.55),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                _getCombinedEventLongName(test.combinedEvent) ?? '',
+                                style: const TextStyle(
+                                  color: Color(0xFFFFB300),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                          ],
+                          Text(
+                            _getGenderLabel(test.genders),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1026,6 +1352,24 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
         );
       },
     );
+  }
+
+  /// Obtener shortName de combinedEvent (DEC, TET, etc.)
+  String? _getCombinedEventShortName(dynamic combinedEvent) {
+    if (combinedEvent == null) return null;
+    if (combinedEvent is Map<String, dynamic>) {
+      return combinedEvent['shortName'] as String?;
+    }
+    return null;
+  }
+
+  /// Obtener longName de combinedEvent (Decatlón, Tetratlón, etc.)
+  String? _getCombinedEventLongName(dynamic combinedEvent) {
+    if (combinedEvent == null) return null;
+    if (combinedEvent is Map<String, dynamic>) {
+      return combinedEvent['longName'] as String?;
+    }
+    return null;
   }
 
   /// Obtener el label del género

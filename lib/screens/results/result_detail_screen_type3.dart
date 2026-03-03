@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/result_type3.dart';
 import '../../services/event_service.dart';
+import '../../services/socket_service.dart';
+import 'event_test_athlete_search_sheet.dart';
 
 class ResultDetailScreenType3 extends StatefulWidget {
   final String eventTestId;
@@ -43,10 +46,15 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
   String? _errorMessage;
   final EventService _eventService = EventService();
 
+  // Realtime
+  final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
+  Timer? _refreshDebounce;
+
   @override
   void initState() {
     super.initState();
     _loadResults();
+    _subscribeToSocket();
     _initAnimations();
   }
 
@@ -168,10 +176,55 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
     _fadeController.dispose();
     _slideController.dispose();
     _staggeredController.dispose();
     super.dispose();
+  }
+
+  /// Recarga silenciosa (sin spinner) para actualizaciones realtime
+  Future<void> _silentRefresh() async {
+    try {
+      final response = await _eventService.getHeightEventResults(
+        widget.eventTestId,
+        eventId: widget.eventId,
+      );
+      if (mounted) setState(() => _resultData = response.data);
+    } catch (_) {}
+  }
+
+  /// Suscribirse a eventos Socket.IO relevantes para esta pantalla
+  void _subscribeToSocket() {
+    final socket = SocketService();
+    final eventTestId = widget.eventTestId;
+    final eventId = widget.eventId;
+
+    void debounced() {
+      _refreshDebounce?.cancel();
+      _refreshDebounce = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) _silentRefresh();
+      });
+    }
+
+    _socketSubs
+      ..add(socket.on('series:created').listen((d) {
+        if (d['eventTestId'] == eventTestId) debounced();
+      }))
+      ..add(socket.on('series:updated').listen((_) { debounced(); }))
+      ..add(socket.on('series:deleted').listen((_) { debounced(); }))
+      ..add(socket.on('series:renamedAll').listen((d) {
+        if (eventId == null || d['eventId'] == eventId) debounced();
+      }))
+      ..add(socket.on('lifData:uploaded').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:created').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:updated').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:deleted').listen((_) { debounced(); }))
+      ..add(socket.on('lynx:import:complete').listen((_) { debounced(); }));
   }
 
   @override
@@ -224,8 +277,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height * 0.15,
-                  maxHeight: MediaQuery.of(context).size.height * 0.28,
+                  minHeight: MediaQuery.of(context).size.height * 0.13,
+                  maxHeight: MediaQuery.of(context).size.height * 0.35,
                 ),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -246,11 +299,11 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                   ),
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 2),
                           Flexible(
                             child: FadeTransition(
                               opacity: _headerFadeAnimation,
@@ -260,7 +313,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Flexible(
                             child: FadeTransition(
                               opacity: _titleFadeAnimation,
@@ -411,7 +464,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
             'Resultados de la Prueba',
             style: TextStyle(
               color: Colors.white,
-              fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
+              fontSize: MediaQuery.of(context).size.width < 360 ? 14 : (MediaQuery.of(context).size.width < 400 ? 16 : 20),
               fontWeight: FontWeight.w800,
               height: 1.1,
               letterSpacing: -0.5,
@@ -437,7 +490,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                 eventTest.displayedName,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
+                  fontSize: MediaQuery.of(context).size.width < 360 ? 14 : (MediaQuery.of(context).size.width < 400 ? 16 : 20),
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                   letterSpacing: -0.5,
@@ -561,7 +614,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               'Buscar atleta',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -577,7 +630,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
       return Center(
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 40),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
@@ -599,7 +652,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                 'No hay resultados disponibles',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -620,13 +673,15 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
     }
 
     return Column(
-      children: _resultData!.series.map((serie) {
+      children: _resultData!.series
+          .where((serie) => serie.status)
+          .map((serie) {
         return Column(
           children: [
             _buildSerieTitle(serie),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             _buildSerieResults(serie),
-            const SizedBox(height: 30),
+            const SizedBox(height: 18),
           ],
         );
       }).toList(),
@@ -641,7 +696,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           serie.name,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -708,7 +763,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 15),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: getBackgroundColor(),
         borderRadius: BorderRadius.circular(16),
@@ -723,8 +778,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 20,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              height: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
               decoration: BoxDecoration(
                 color: getPositionColor(),
                 borderRadius: const BorderRadius.only(
@@ -770,8 +825,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 65,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              height: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -805,8 +860,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 15,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              height: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
                 borderRadius: const BorderRadius.only(
@@ -907,51 +962,13 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
   }
 
   void _showSearchDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1D1F28),
-        title: const Text(
-          'Buscar Atleta',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nombre del atleta...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE74C3C),
-            ),
-            child: const Text(
-              'Buscar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventTestAthleteSearchSheet(
+        eventTestId: widget.eventTestId,
+        eventService: _eventService,
       ),
     );
   }

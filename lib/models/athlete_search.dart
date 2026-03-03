@@ -171,6 +171,150 @@ class AthleteSearchSerie {
   }
 }
 
+// ─── Modelo para el endpoint /event-tests/:id/search-athlete ────────────────
+
+class EventTestSearchResponse {
+  final bool success;
+  final String query;
+  final int total;
+  final List<EventTestSearchResult> data;
+
+  const EventTestSearchResponse({
+    required this.success,
+    required this.query,
+    required this.total,
+    required this.data,
+  });
+
+  factory EventTestSearchResponse.fromJson(Map<String, dynamic> json) {
+    return EventTestSearchResponse(
+      success: json['success'] as bool? ?? false,
+      query: json['query']?.toString() ?? '',
+      total: json['total'] as int? ?? 0,
+      data: (json['data'] as List?)
+              ?.map((e) =>
+                  EventTestSearchResult.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class EventTestSearchResult {
+  final EventTestSearchSerie serie;
+  final EventTestSearchResultData result;
+
+  const EventTestSearchResult({
+    required this.serie,
+    required this.result,
+  });
+
+  factory EventTestSearchResult.fromJson(Map<String, dynamic> json) {
+    return EventTestSearchResult(
+      serie: EventTestSearchSerie.fromJson(
+          json['serie'] as Map<String, dynamic>? ?? {}),
+      result: EventTestSearchResultData.fromJson(
+          json['result'] as Map<String, dynamic>? ?? {}),
+    );
+  }
+}
+
+class EventTestSearchSerie {
+  final String id;
+  final String name;
+  final int position;
+  final String? wind;
+  final int totalAthletes;
+
+  const EventTestSearchSerie({
+    required this.id,
+    required this.name,
+    required this.position,
+    this.wind,
+    required this.totalAthletes,
+  });
+
+  factory EventTestSearchSerie.fromJson(Map<String, dynamic> json) {
+    return EventTestSearchSerie(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      position: json['position'] as int? ?? 0,
+      wind: json['wind']?.toString(),
+      totalAthletes: json['totalAthletes'] as int? ?? 0,
+    );
+  }
+}
+
+class EventTestSearchResultData {
+  final int? position;
+  final String? positionAthlete;
+  final String athleteId;
+  final String name;
+  final String team;
+  final String? country;
+  final int? lane;
+  final String? time;
+  final String? bestMark;
+  final String? athleteStatus;
+  final String? eventType;
+
+  const EventTestSearchResultData({
+    this.position,
+    this.positionAthlete,
+    required this.athleteId,
+    required this.name,
+    required this.team,
+    this.country,
+    this.lane,
+    this.time,
+    this.bestMark,
+    this.athleteStatus,
+    this.eventType,
+  });
+
+  /// Texto del resultado: status > bestMark > time > pending
+  String get displayMark {
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return athleteStatus!;
+    if (bestMark != null && bestMark!.isNotEmpty) return bestMark!;
+    if (time != null && time!.isNotEmpty) return time!;
+    return '–';
+  }
+
+  /// Posición a mostrar: positionAthlete (DQF, 1…) si existe, o position numérico
+  String get displayPosition {
+    if (positionAthlete != null && positionAthlete!.isNotEmpty) {
+      return positionAthlete!;
+    }
+    if (position != null) return '$position';
+    return '–';
+  }
+
+  bool get hasResult =>
+      (time != null && time!.isNotEmpty) ||
+      (bestMark != null && bestMark!.isNotEmpty);
+
+  bool get isDNS =>
+      athleteStatus != null && athleteStatus!.isNotEmpty && !hasResult;
+
+  factory EventTestSearchResultData.fromJson(Map<String, dynamic> json) {
+    return EventTestSearchResultData(
+      position: json['position'] as int?,
+      positionAthlete: json['positionAthlete']?.toString(),
+      athleteId: json['athleteId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      team: json['team']?.toString() ?? '',
+      country: json['country']?.toString(),
+      lane: json['lane'] as int?,
+      time: json['time']?.toString(),
+      bestMark: json['bestMark']?.toString(),
+      athleteStatus: json['athleteStatus']?.toString(),
+      eventType: json['eventType']?.toString(),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AthleteSearchResultData {
   final int? position;
   final String athleteId;

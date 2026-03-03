@@ -26,6 +26,16 @@ class Environment {
     }
   }
   
+  // URL del servidor Socket.IO (sin path /v5/api)
+  static String get socketUrl {
+    switch (current) {
+      case EnvironmentType.local:
+        return 'http://localhost:4000';
+      case EnvironmentType.production:
+        return 'https://backend.app.v5.stivou.com';
+    }
+  }
+
   // Configuraciones adicionales por ambiente
   static bool get isProduction => current == EnvironmentType.production;
   // Logs activos siempre para facilitar diagnóstico desde adb logcat / Flutter DevTools

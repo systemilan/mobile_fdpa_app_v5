@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../../config/environment.dart';
 import '../../services/national_record_service.dart';
 import '../../models/national_record.dart';
 
@@ -45,6 +48,10 @@ class _RecordsScreenState extends State<RecordsScreen>
   NationalRecordStatistics? _statistics;
   
   final List<String> _types = ['Records Nacionales', 'Marcas Mínimas'];
+
+  // Fechas de actualización desde la API
+  String _nationalRecordsDate = 'Cargando...';
+  String _minimumMarksDate = 'Cargando...';
 
   @override
   void initState() {
@@ -138,6 +145,7 @@ class _RecordsScreenState extends State<RecordsScreen>
 
     // Cargar datos de la API
     _loadData();
+    _loadUpdateDates();
 
     // Iniciar animaciones con delay
     Future.delayed(const Duration(milliseconds: 400), () {
@@ -149,6 +157,35 @@ class _RecordsScreenState extends State<RecordsScreen>
     });
   }
 
+  Future<void> _loadUpdateDates() async {
+    try {
+      final url = Uri.parse('${Environment.publicBaseUrl}/app/update-dates');
+      final response = await http.get(url).timeout(Environment.connectTimeout);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final data = json['data'];
+        if (mounted) {
+          setState(() {
+            _nationalRecordsDate = _formatDate(data['nationalRecords']?['lastUpdated']);
+            _minimumMarksDate = _formatDate(data['minimumMarks']?['lastUpdated']);
+          });
+        }
+      }
+    } catch (_) {
+      // Mantener valor por defecto
+    }
+  }
+
+  String _formatDate(String? isoDate) {
+    if (isoDate == null) return '--';
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return 'Act. ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '--';
+    }
+  }
+
   /// Cargar categorías y estadísticas
   Future<void> _loadData() async {
     try {
@@ -157,14 +194,13 @@ class _RecordsScreenState extends State<RecordsScreen>
         _errorMessage = null;
       });
 
-      // Cargar categorías y estadísticas en paralelo
-      final results = await Future.wait([
-        _recordService.getCategories(),
-        _recordService.getStatistics(),
-      ]);
+      // Cargar estadísticas (incluye categorías con categoryOrder)
+      final statistics = await _recordService.getStatistics();
 
-      final categories = results[0] as List<String>;
-      final statistics = results[1] as NationalRecordStatistics;
+      // Ordenar categorías por categoryOrder tal como viene del servidor
+      final sortedCategories = List<CategoryStat>.from(statistics.categories)
+        ..sort((a, b) => a.categoryOrder.compareTo(b.categoryOrder));
+      final categories = sortedCategories.map((c) => c.category).toList();
 
       if (mounted) {
         setState(() {
@@ -336,8 +372,8 @@ class _RecordsScreenState extends State<RecordsScreen>
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height * 0.15,
-                  maxHeight: MediaQuery.of(context).size.height * 0.28,
+                  minHeight: MediaQuery.of(context).size.height * 0.13,
+                  maxHeight: MediaQuery.of(context).size.height * 0.32,
                 ),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -400,21 +436,24 @@ class _RecordsScreenState extends State<RecordsScreen>
               ),
               // Contenido scrolleable
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildFilters(),
-                      const SizedBox(height: 20),
-                      FadeTransition(
-                        opacity: _recordsFadeAnimation,
-                        child: SlideTransition(
-                          position: _recordsSlideAnimation,
-                          child: _buildRecordsSection(),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildFilters(),
+                        const SizedBox(height: 20),
+                        FadeTransition(
+                          opacity: _recordsFadeAnimation,
+                          child: SlideTransition(
+                            position: _recordsSlideAnimation,
+                            child: _buildRecordsSection(),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -516,12 +555,8 @@ class _RecordsScreenState extends State<RecordsScreen>
         ? _categories[_selectedCategoryIndex] 
         : 'Cargando...';
 
-    // Obtener fecha de última actualización
-    String lastUpdateText = 'Cargando...';
-    if (_statistics != null) {
-      final date = _statistics!.lastUpdate.date;
-      lastUpdateText = 'Act. ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-    }
+    // Obtener fecha de última actualización desde update-dates API
+    final lastUpdateText = _selectedTypeIndex == 0 ? _nationalRecordsDate : _minimumMarksDate;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +568,7 @@ class _RecordsScreenState extends State<RecordsScreen>
             '${_types[_selectedTypeIndex]} - $currentCategory',
             style: TextStyle(
               color: Colors.white,
-              fontSize: MediaQuery.of(context).size.width < 400 ? 20 : 24,
+              fontSize: MediaQuery.of(context).size.width < 400 ? 14 : 16,
               fontWeight: FontWeight.w800,
               height: 1.0,
               letterSpacing: -0.5,
@@ -549,7 +584,7 @@ class _RecordsScreenState extends State<RecordsScreen>
             lastUpdateText,
             style: const TextStyle(
               color: Color(0xFFE74C3C),
-              fontSize: 16,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
             maxLines: 1,

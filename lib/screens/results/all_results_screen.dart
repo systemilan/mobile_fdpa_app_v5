@@ -234,8 +234,8 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height * 0.15,
-                  maxHeight: MediaQuery.of(context).size.height * 0.28,
+                  minHeight: MediaQuery.of(context).size.height * 0.12,
+                  maxHeight: MediaQuery.of(context).size.height * 0.20,
                 ),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -288,7 +288,9 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               ),
               // Contenido scrolleable
               Expanded(
-                child: SingleChildScrollView(
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +302,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                           child: _buildYearFilters(),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       FadeTransition(
                         opacity: _resultsAnimation,
                         child: SlideTransition(
@@ -310,6 +312,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
             ],
@@ -415,7 +418,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
             'Todos los resultados',
             style: TextStyle(
               color: Colors.white,
-              fontSize: MediaQuery.of(context).size.width < 400 ? 30 : 36,
+              fontSize: MediaQuery.of(context).size.width < 400 ? 18 : 20,
               fontWeight: FontWeight.w800,
               height: 1.1,
               letterSpacing: -0.5,
@@ -431,7 +434,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
 
   Widget _buildYearFilters() {
     return Container(
-      height: 50,
+      height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _years.length,
@@ -445,7 +448,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
             },
             child: Container(
               margin: EdgeInsets.only(right: index < _years.length - 1 ? 10 : 0),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
                 color: isSelected 
                   ? const Color(0xFFE74C3C).withOpacity(0.1)
@@ -466,7 +469,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                     color: isSelected 
                       ? const Color(0xFFC0392B)
                       : const Color(0xFFE74C3C),
-                    fontSize: 16,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -601,7 +604,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               // Información del evento
@@ -623,7 +626,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                       event.longName,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
@@ -645,8 +648,8 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               const SizedBox(width: 15),
               // Solo bandera sin escudo
               Container(
-                width: 80,
-                height: 60,
+                width: 56,
+                height: 40,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [

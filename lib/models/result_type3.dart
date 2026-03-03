@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Model for height-based field events (inputFormat "2") - High Jump, Pole Vault, etc.
 /// These events use progressive heights where athletes attempt each height until elimination
 
@@ -264,17 +266,31 @@ class HeightAthleteResult {
     List<HeightAttempt> parseAttempts(List<dynamic>? attemptsJson) {
       if (attemptsJson == null) return [];
       
-      return attemptsJson.map((attemptStr) {
-        if (attemptStr is String) {
-          // Formato: "height:result" ej. "5.14:X0" o "4.59:——"
-          final colonIdx = attemptStr.indexOf(':');
-          if (colonIdx > 0) {
-            final height = attemptStr.substring(0, colonIdx);
-            final result = attemptStr.substring(colonIdx + 1);
-            return HeightAttempt(height: height, result: result);
+      return attemptsJson.map((attemptItem) {
+        String height = '';
+        String result = '';
+
+        if (attemptItem is Map<String, dynamic>) {
+          // Ya es un objeto: {"height":"4.59","result":"O"}
+          height = attemptItem['height']?.toString() ?? '';
+          result = attemptItem['result']?.toString() ?? '';
+        } else if (attemptItem is String) {
+          // JSON stringificado: "{\"height\":\"4.59\",\"result\":\"——\"}"
+          try {
+            final decoded = jsonDecode(attemptItem) as Map<String, dynamic>;
+            height = decoded['height']?.toString() ?? '';
+            result = decoded['result']?.toString() ?? '';
+          } catch (_) {
+            // Fallback: "height:result" separado por :
+            final colonIdx = attemptItem.indexOf(':');
+            if (colonIdx > 0) {
+              height = attemptItem.substring(0, colonIdx);
+              result = attemptItem.substring(colonIdx + 1);
+            }
           }
         }
-        return HeightAttempt(height: '', result: '');
+
+        return HeightAttempt(height: height, result: result);
       }).toList();
     }
 
@@ -291,10 +307,18 @@ class HeightAthleteResult {
       time: json['time']?.toString(),
       attempts: parseAttempts(json['attempts']),
       winds: (json['winds'] as List<dynamic>?)?.map((w) => w.toString()).toList() ?? [],
-      bestMark: json['bestMark']?.toString(),
+      bestMark: _formatHeightMark(json['bestMark']),
       status: json['status'] ?? true,
       eventType: json['eventType'] ?? '',
     );
+  }
+
+  /// Formatea una marca de altura a siempre 2 decimales (ej: 5.9 → "5.90")
+  static String? _formatHeightMark(dynamic value) {
+    if (value == null) return null;
+    final d = double.tryParse(value.toString());
+    if (d == null) return value.toString();
+    return d.toStringAsFixed(2);
   }
 
   /// Texto de posición: número si tiene posición, athleteStatus si es DNS/DNF/NH/NM
@@ -305,7 +329,14 @@ class HeightAthleteResult {
   }
 
   /// True si no tiene posición competitiva (DNS/DNF/DQ/NH/NM)
-  bool get isDNS => position == null;
+  bool get isDNS {
+    // Si tiene tiempo válido → participó, NO es DNS aunque position sea null
+    if (bestMark != null) return false;
+    // Si tiene athleteStatus explícito (DNS, DNF, DQ, etc.) → sí es DNS
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return true;
+    // Sin marca, sin status y sin posición → DNS
+    return position == null;
+  }
 
   /// Get the best cleared height (highest O, XO, XXO, etc.)
   String? get bestHeight {

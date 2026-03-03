@@ -286,6 +286,13 @@ class RaceAthleteResult {
 
   /// True si no tiene posición competitiva (DNS/DNF/DQ/NH/NM)
   bool get isDNS {
+    // Si tiene tiempo válido → participó, NO es DNS aunque position sea null
+    if (time != null && time!.isNotEmpty) return false;
+    // Si tiene una marca válida → participó
+    if (bestMark != null && bestMark!.isNotEmpty) return false;
+    // Si tiene athleteStatus explícito (DNS, DNF, DQ, etc.) → sí es DNS
+    if (athleteStatus != null && athleteStatus!.isNotEmpty) return true;
+    // Sin tiempo, sin marca, sin status y sin posición → DNS
     return position == null;
   }
 

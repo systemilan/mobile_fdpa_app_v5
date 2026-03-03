@@ -81,16 +81,19 @@ class NationalRecord {
 class CategoryStat {
   final String category;
   final String count;
+  final int categoryOrder;
 
   CategoryStat({
     required this.category,
     required this.count,
+    this.categoryOrder = 999,
   });
 
   factory CategoryStat.fromJson(Map<String, dynamic> json) {
     return CategoryStat(
       category: json['category'] ?? '',
       count: json['count']?.toString() ?? '0',
+      categoryOrder: json['categoryOrder'] ?? 999,
     );
   }
 }

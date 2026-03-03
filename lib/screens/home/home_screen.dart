@@ -1,14 +1,21 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:in_app_update/in_app_update.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:provider/provider.dart';
 import '../championship/championship_detail_screen.dart';
 import '../results/all_results_screen.dart';
 import '../records/records_screen.dart';
+import '../minimum_marks/minimum_marks_list_screen.dart';
+import '../../config/environment.dart';
+import '../../config/build_info.dart';
 import '../../services/update_service.dart';
 import '../../services/event_service.dart';
+import '../../services/socket_service.dart';
 import '../../models/event.dart' as EventModel;
 import '../../models/event_list.dart';
 import '../../models/calendar_activity.dart';
@@ -53,6 +60,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<EventItem> _upcomingEvents = [];
   List<EventItem> _latestResults = [];
   List<CalendarActivity> _calendarActivities = [];
+
+  // Suscripciones realtime
+  final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
+
+  // Fechas de actualización desde la API
+  String _nationalRecordsDate = 'Cargando...';
+  String _minimumMarksDate = 'Cargando...';
+  String _rankingDate = 'Cargando...';
 
   @override
   void initState() {
@@ -141,9 +156,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       // Cargar actividades del calendario
       _loadCalendarActivities();
+
+      // Cargar fechas de actualización
+      _loadUpdateDates();
       
       // Verificar actualizaciones después de que se cargue la pantalla
       _checkForUpdatesOnStartup();
+
+      // Suscribir a eventos realtime
+      _subscribeToSocket();
     } catch (e) {
       debugPrint('Error inicializando animaciones: $e');
       // Fallback: inicializar controladores básicos
@@ -155,6 +176,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         duration: const Duration(milliseconds: 800),
         vsync: this,
       );
+    }
+  }
+
+  Future<void> _loadUpdateDates() async {
+    try {
+      final url = Uri.parse('${Environment.publicBaseUrl}/app/update-dates');
+      final response = await http.get(url).timeout(Environment.connectTimeout);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final data = json['data'];
+        if (mounted) {
+          setState(() {
+            _nationalRecordsDate = _formatDate(data['nationalRecords']?['lastUpdated']);
+            _minimumMarksDate = _formatDate(data['minimumMarks']?['lastUpdated']);
+            _rankingDate = _formatDate(data['ranking']?['lastUpdated']);
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _nationalRecordsDate = '--';
+          _minimumMarksDate = '--';
+          _rankingDate = '--';
+        });
+      }
+    }
+  }
+
+  String _formatDate(String? isoDate) {
+    if (isoDate == null) return '--';
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+      ];
+      return 'Lista actualizada el ${dt.day} de ${months[dt.month - 1]} de ${dt.year}';
+    } catch (_) {
+      return '--';
     }
   }
 
@@ -192,7 +253,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (e) {
       debugPrint('Error disposing controllers: $e');
     }
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
     super.dispose();
+  }
+
+  /// Suscribirse a eventos realtime del backend para refrescar la lista de eventos
+  void _subscribeToSocket() {
+    final socket = SocketService();
+    _socketSubs
+      ..add(socket.on('event:created').listen((_) {
+        if (mounted) _loadLatestEvents();
+      }))
+      ..add(socket.on('event:updated').listen((_) {
+        if (mounted) _loadLatestEvents();
+      }))
+      ..add(socket.on('event:deleted').listen((_) {
+        if (mounted) _loadLatestEvents();
+      }));
   }
 
   /// Recarga todos los datos de la pantalla principal (pull-to-refresh)
@@ -536,7 +616,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 6),
                   FadeTransition(
                     opacity: _headerFadeAnimation,
                     child: SlideTransition(
@@ -544,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: _buildHeader(),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   FadeTransition(
                     opacity: _resultsFadeAnimation,
                     child: SlideTransition(
@@ -640,13 +720,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     return Row(
       children: [
-        const SizedBox(width: 15),
+        const SizedBox(width: 12),
         Container(
-          width: 50,
-          height: 50,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(7),
             boxShadow: [
               BoxShadow(
                 color: isDarkMode 
@@ -665,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
-        const SizedBox(width: 15),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   'Federación Deportiva',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black87,
-                    fontSize: 18,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -690,7 +770,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   'Peruana de Atletismo',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black87,
-                    fontSize: 18,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -712,14 +792,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             );
           },
           child: Container(
-            width: 44,
-            height: 44,
-            margin: const EdgeInsets.only(right: 8),
+            width: 34,
+            height: 34,
+            margin: const EdgeInsets.only(right: 6),
             decoration: BoxDecoration(
               color: isDarkMode
                   ? Colors.white.withOpacity(0.1)
                   : Colors.black.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(17),
               border: Border.all(
                 color: isDarkMode
                     ? Colors.white.withOpacity(0.2)
@@ -730,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Icon(
               Icons.search,
               color: isDarkMode ? Colors.white70 : Colors.black54,
-              size: 20,
+              size: 17,
             ),
           ),
         ),
@@ -751,13 +831,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Stack(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: _updateAvailable 
                   ? Colors.orange.withOpacity(0.2) 
                   : (isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(17),
                 border: Border.all(
                   color: _updateAvailable 
                     ? Colors.orange.withOpacity(0.5) 
@@ -777,7 +857,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: _updateAvailable 
                   ? Colors.orange 
                   : (isDarkMode ? Colors.white : Colors.black87),
-                  size: 22,
+                  size: 18,
                 ),
           ),
           // Indicador de notificación naranja
@@ -822,7 +902,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Últimos resultados',
               style: TextStyle(
                 color: const Color(0xFFE74C3C),
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -872,13 +952,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'Ver todos',
                 style: TextStyle(
                   color: isDarkMode ? Colors.white70 : Colors.black54,
-                  fontSize: 16,
+                  fontSize: 13,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         _getResultsData().isEmpty
             ? Container(
                 height: 150,
@@ -1127,27 +1207,117 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildStatsSections() {
     return Column(
       children: [
-        _buildStatsCard(
-          'Marcas Mínimas',
-          'Lista actualizada el 20 de febrero de 2025',
-          Icons.timer,
-          () => _navigateToRecords(isMinimumMarks: true),
+        _buildRankingCard(
+          title: 'Marcas Mínimas',
+          subtitle: _minimumMarksDate,
+          imagePath: 'assets/images/botom1.jpg',
+          onTap: () => _navigateToRecords(isMinimumMarks: true),
         ),
         const SizedBox(height: 15),
-        _buildStatsCard(
-          'Records Nacionales',
-          'Lista actualizada el 20 de febrero de 2025',
-          Icons.emoji_events,
-          () => _navigateToRecords(isMinimumMarks: false),
+        _buildRankingCard(
+          title: 'Records Nacionales',
+          subtitle: _nationalRecordsDate,
+          imagePath: 'assets/images/botom2.jpg',
+          onTap: () => _navigateToRecords(isMinimumMarks: false),
         ),
         const SizedBox(height: 15),
-        _buildStatsCard(
-          'Ranking Nacional',
-          'Lista actualizada el 20 de febrero de 2025',
-          Icons.leaderboard,
-          () => _showStatsDetails('Ranking Nacional'),
+        _buildRankingCard(
+          title: 'Ranking Nacional',
+          subtitle: _rankingDate,
+          imagePath: 'assets/images/botom3.jpg',
+          onTap: () => _showStatsDetails('Ranking Nacional'),
         ),
       ],
+    );
+  }
+
+  Widget _buildRankingCard({
+    required String title,
+    required String subtitle,
+    required String imagePath,
+    required VoidCallback onTap,
+  }) {
+    const cardColor = Color(0xFF1D1F28);
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          width: double.infinity,
+          color: cardColor,
+          child: Stack(
+            children: [
+              // Imagen en el lado derecho
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 160,
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              // Capa oscura encima de la imagen para apagarla
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 160,
+                child: Container(
+                  color: Colors.black.withOpacity(0.45),
+                ),
+              ),
+              // Gradiente de fusión: cardColor → transparente (izq → der)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 180,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      stops: [0.0, 0.35, 1.0],
+                      colors: [
+                        cardColor,
+                        Color(0xEE1D1F28),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Texto
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1180,7 +1350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     title,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 17,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1360,7 +1530,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               day,
               style: TextStyle(
                 color: isNext ? Colors.white : const Color(0xFFE74C3C),
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1494,7 +1664,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'Próximos eventos',
               style: TextStyle(
                 color: Color(0xFFE74C3C),
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1506,13 +1676,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 'Abrir calendario',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 16,
+                  fontSize: 13,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         _calendarActivities.isEmpty
             ? Container(
                 height: 120,
@@ -1728,146 +1898,204 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Mostrar calendario modal con actividades
   void _showCalendarFromActivities(BuildContext context) {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF1A1D27) : Colors.white;
-    final dividerColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black12;
-    final pillColor = isDark ? Colors.white24 : Colors.black26;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.75,
+          initialChildSize: 0.80,
           minChildSize: 0.5,
           maxChildSize: 0.95,
           builder: (context, scrollController) {
             return Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0E1018),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
-                  // Pill handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 4),
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: pillColor,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE74C3C).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
+                  // ── Header con imagen de fondo ──
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: SizedBox(
+                      height: 130,
+                      width: double.infinity,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Imagen de fondo
+                          Image.asset(
+                            'assets/images/botomevent.jpg',
+                            fit: BoxFit.cover,
                           ),
-                          child: const Icon(
-                            Icons.event_rounded,
-                            color: Color(0xFFE74C3C),
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Calendario de Eventos',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black87,
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              Text(
-                                'Temporada 2026',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white54 : Colors.black45,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Botón descargar PDF (solo en móvil)
-                        if (!kIsWeb)
-                          GestureDetector(
-                            onTap: _downloadCalendarPdf,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE74C3C).withOpacity(0.13),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: const Color(0xFFE74C3C).withOpacity(0.35),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.download_rounded, color: Color(0xFFE74C3C), size: 15),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    'PDF',
-                                    style: TextStyle(
-                                      color: Color(0xFFE74C3C),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
+                          // Overlay oscuro degradado
+                          Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color(0xCC040512),
+                                  Color(0xEE0E1018),
                                 ],
                               ),
                             ),
                           ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
-                              shape: BoxShape.circle,
+                          // Contenido del header
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Pill handle
+                                Center(
+                                  child: Container(
+                                    width: 36,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white24,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.08),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.white.withOpacity(0.15),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'TEMPORADA 2026',
+                                              style: TextStyle(
+                                                color: Colors.white60,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          const Text(
+                                            'Calendario',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1,
+                                              letterSpacing: -0.5,
+                                            ),
+                                          ),
+                                          const Text(
+                                            'de Eventos',
+                                            style: TextStyle(
+                                              color: Color(0xFFE74C3C),
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.1,
+                                              letterSpacing: -0.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Botones top-right
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () => Navigator.pop(context),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(7),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.08),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white.withOpacity(0.12),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              color: Colors.white70,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                        if (!kIsWeb) ...[  
+                                          const SizedBox(height: 8),
+                                          GestureDetector(
+                                            onTap: _downloadCalendarPdf,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE74C3C).withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: const Color(0xFFE74C3C).withOpacity(0.35),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.download_rounded, color: Color(0xFFE74C3C), size: 13),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'PDF',
+                                                    style: TextStyle(
+                                                      color: Color(0xFFE74C3C),
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w700,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            child: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54, size: 18),
                           ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Divider(color: dividerColor, height: 1),
-                  const SizedBox(height: 8),
                   Expanded(
                     child: _calendarActivities.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.calendar_today_outlined,
-                                  color: isDark ? Colors.white.withOpacity(0.2) : Colors.black26,
-                                  size: 56,
+                                  color: Colors.white24,
+                                  size: 48,
                                 ),
                                 const SizedBox(height: 14),
-                                Text(
+                                const Text(
                                   'No hay eventos próximos',
                                   style: TextStyle(
-                                    color: isDark ? Colors.white54 : Colors.black45,
+                                    color: Colors.white38,
                                     fontSize: 15,
                                   ),
                                 ),
@@ -1876,7 +2104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           )
                         : ListView.builder(
                             controller: scrollController,
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                             itemCount: _calendarActivities.length,
                             itemBuilder: (context, index) {
                               final activity = _calendarActivities[index];
@@ -1895,7 +2123,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Card de evento en el calendario modal
   Widget _buildCalendarEventCardFromActivity(CalendarActivity activity) {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     DateTime? startDate;
     DateTime? endDate;
     try { startDate = DateTime.parse(activity.dateStart); } catch (_) {}
@@ -1912,49 +2139,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final isClickable = activity.eventId != null && activity.eventId!.isNotEmpty;
     final days = activity.daysUntilStart;
 
-    // Paleta según tipo
+    // Acento sutil según tipo (tonos apagados)
     final Color accentColor;
-    final Color accentBg;
-    final Color dateTextColor;
     final String typeLabel;
     switch (activity.type) {
       case 'international':
-        accentColor = const Color(0xFF4FC3F7);   // celeste
-        accentBg    = const Color(0xFF0D1F3C);
-        dateTextColor = const Color(0xFF81D4FA);
+        accentColor = const Color(0xFF5B9BD5);
         typeLabel   = 'INTERNACIONAL';
         break;
       case 'regional':
-        accentColor = const Color(0xFFFFB74D);   // ámbar
-        accentBg    = const Color(0xFF2A1A00);
-        dateTextColor = const Color(0xFFFFCC80);
+        accentColor = const Color(0xFFB8976A);
         typeLabel   = 'REGIONAL';
         break;
-      default: // national
-        accentColor = const Color(0xFFEF5350);   // rojo vivo
-        accentBg    = const Color(0xFF2A0A0A);
-        dateTextColor = const Color(0xFFEF9A9A);
+      default:
+        accentColor = const Color(0xFFB85C5C);
         typeLabel   = 'NACIONAL';
     }
 
-    // Color del badge de días según urgencia
-    final Color daysColor;
-    final Color daysBg;
+    // Badge días
+    String daysLabel;
+    Color daysColor;
     if (days <= 0) {
-      daysColor = const Color(0xFF69F0AE);
-      daysBg    = const Color(0xFF003322);
-    } else if (days <= 7) {
-      daysColor = const Color(0xFFEF5350);
-      daysBg    = const Color(0xFF2A0A0A);
-    } else if (days <= 14) {
-      daysColor = const Color(0xFFFF8A65);
-      daysBg    = const Color(0xFF2A1200);
-    } else if (days <= 30) {
-      daysColor = const Color(0xFFFFD54F);
-      daysBg    = const Color(0xFF2A2000);
+      daysLabel = 'HOY';
+      daysColor = const Color(0xFF5DCA88);
+    } else if (days == 1) {
+      daysLabel = 'MAÑANA';
+      daysColor = const Color(0xFFE8876A);
     } else {
-      daysColor = const Color(0xFF80CBC4);
-      daysBg    = const Color(0xFF002A28);
+      daysLabel = '${days}d';
+      daysColor = days <= 7
+          ? const Color(0xFFE8876A)
+          : days <= 30
+              ? const Color(0xFFD4B896)
+              : Colors.white38;
     }
 
     return GestureDetector(
@@ -1979,263 +2196,159 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E2130) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF161821),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: accentColor.withOpacity(isDark ? 0.2 : 0.3),
+            color: Colors.white.withOpacity(0.06),
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? accentColor.withOpacity(0.08) : Colors.black12,
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            children: [
-              // Accent left bar
-              Positioned(
-                left: 0, top: 0, bottom: 0,
-                child: Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [accentColor, accentColor.withOpacity(0.4)],
-                    ),
-                  ),
+        child: Row(
+          children: [
+            // Accent left bar
+            Container(
+              width: 3,
+              height: 72,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  bottomLeft: Radius.circular(14),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 13, 13, 13),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Date box
-                    Container(
-                      width: 54,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: accentBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: accentColor.withOpacity(0.35),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            dayStr,
-                            style: TextStyle(
-                              color: dateTextColor,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                            ),
-                          ),
-                          if (isMultiDay)
-                            Text(
-                              '–$endDayStr',
-                              style: TextStyle(
-                                color: accentColor.withOpacity(0.6),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                height: 1.3,
-                              ),
-                            ),
-                          const SizedBox(height: 4),
-                          Text(
-                            monStr,
-                            style: TextStyle(
-                              color: accentColor.withOpacity(0.8),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
+            ),
+            // Date column
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dayStr,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                  if (isMultiDay)
+                    Text(
+                      '–$endDayStr',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
                       ),
                     ),
-                    const SizedBox(width: 13),
-                    // Content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Type badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: accentColor.withOpacity(0.4),
-                                width: 1,
-                              ),
+                  const SizedBox(height: 2),
+                  Text(
+                    monStr,
+                    style: TextStyle(
+                      color: accentColor.withOpacity(0.85),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Divider vertical
+            Container(
+              width: 1,
+              height: 44,
+              color: Colors.white.withOpacity(0.07),
+            ),
+            const SizedBox(width: 14),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Type badge - minimal
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      typeLabel,
+                      style: TextStyle(
+                        color: accentColor,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    activity.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (activity.location.isNotEmpty) ...[  
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined,
+                            color: Colors.white.withOpacity(0.3), size: 10),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            activity.location,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.35),
+                              fontSize: 11,
                             ),
-                            child: Text(
-                              typeLabel,
-                              style: TextStyle(
-                                color: accentColor,
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.1,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          // Title
-                          Text(
-                            activity.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.bold,
-                              height: 1.3,
-                            ),
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (activity.location.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Row(
-                              children: [
-                                Icon(Icons.location_on_rounded,
-                                    color: accentColor.withOpacity(0.5), size: 11),
-                                const SizedBox(width: 3),
-                                Expanded(
-                                  child: Text(
-                                    activity.location,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.45),
-                                      fontSize: 11.5,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Right: days badge + arrow
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: daysBg,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: daysColor.withOpacity(0.45),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            days == 0 ? 'HOY' : '${days}d',
-                            style: TextStyle(
-                              color: daysColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: days == 0 ? 0.8 : 0,
-                            ),
-                          ),
                         ),
-                        if (isClickable) ...[
-                          const SizedBox(height: 8),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: accentColor.withOpacity(0.4),
-                            size: 20,
-                          ),
-                        ],
                       ],
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Widget para mostrar actividades del calendario desde la API (MÉTODO ANTIGUO - NO SE USA)
-  Widget _buildCalendarActivities() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Icon(
-              Icons.event_note,
-              color: Color(0xFFE74C3C),
-              size: 26,
             ),
-            SizedBox(width: 10),
-            Text(
-              'Calendario de Actividades',
-              style: TextStyle(
-                color: Color(0xFFE74C3C),
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            const SizedBox(width: 12),
+            // Right: days
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    daysLabel,
+                    style: TextStyle(
+                      color: daysColor,
+                      fontSize: days <= 1 ? 9 : 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: days <= 1 ? 0.5 : 0,
+                    ),
+                  ),
+                  if (isClickable)
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white.withOpacity(0.18),
+                      size: 18,
+                    ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        _calendarActivities.isEmpty
-            ? Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.event_busy,
-                        color: Colors.white.withOpacity(0.4),
-                        size: 40,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No hay actividades programadas',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Column(
-                children: _calendarActivities.take(3).map((activity) {
-                  return _buildCalendarActivityCard(activity);
-                }).toList(),
-              ),
-      ],
+      ),
     );
   }
 
@@ -2419,159 +2532,270 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Diálogo para mostrar detalles de una actividad
   void _showActivityDetails(BuildContext context, CalendarActivity activity) {
-    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final bgColor = isDark ? const Color(0xFF1D1F28) : Colors.white;
-    final textPrimary = isDark ? Colors.white : Colors.black87;
-    final textSecondary = isDark ? Colors.white70 : Colors.black54;
-    final iconColor = isDark ? Colors.white54 : Colors.black38;
-    showDialog(
+    final Color accentColor;
+    final String typeLabel;
+    switch (activity.type) {
+      case 'international':
+        accentColor = const Color(0xFF5B9BD5);
+        typeLabel   = 'INTERNACIONAL';
+        break;
+      case 'regional':
+        accentColor = const Color(0xFFB8976A);
+        typeLabel   = 'REGIONAL';
+        break;
+      default:
+        accentColor = const Color(0xFFCF4040);
+        typeLabel   = 'NACIONAL';
+    }
+
+    final days = activity.daysUntilStart;
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: activity.typeColor.withOpacity(0.3),
-            width: 2,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF181A24),
+            borderRadius: BorderRadius.circular(26),
           ),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: activity.typeColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: activity.typeColor,
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                activity.type.toUpperCase(),
-                style: TextStyle(
-                  color: activity.typeColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                activity.title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              // ── Top accent strip + handle ──────────────────────
+              Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.6),
+                  borderRadius: const BorderRadius.only(
+                    topLeft:  Radius.circular(26),
+                    topRight: Radius.circular(26),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              if (activity.description.isNotEmpty) ...[
-                Text(
-                  'Descripción:',
-                  style: const TextStyle(
-                    color: Color(0xFFE74C3C),
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  activity.description,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, color: iconColor, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      activity.formattedDateRange,
-                      style: TextStyle(color: textSecondary, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-              if (activity.isMultiDay) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, color: iconColor, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      activity.formattedDuration,
-                      style: TextStyle(color: textSecondary, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ],
-              if (activity.location.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, color: iconColor, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        activity.location,
-                        style: TextStyle(color: textSecondary, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (activity.daysUntilStart > 0) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 10, bottom: 20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE74C3C).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFE74C3C).withOpacity(0.3),
-                      width: 1,
-                    ),
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.access_time, color: Color(0xFFE74C3C), size: 20),
-                      const SizedBox(width: 8),
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header row: type badge ←→ countdown ─────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left: badge + title + description
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Type badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: accentColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: accentColor.withOpacity(0.3), width: 1),
+                                ),
+                                child: Text(
+                                  typeLabel,
+                                  style: TextStyle(
+                                    color: accentColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Title
+                              Text(
+                                activity.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Right: visual countdown block
+                        _buildCountdownBlock(days, accentColor),
+                      ],
+                    ),
+
+                    // ── Description ──────────────────────────────
+                    if (activity.description.isNotEmpty) ...[
+                      const SizedBox(height: 12),
                       Text(
-                        'Faltan ${activity.daysUntilStart} días',
-                        style: const TextStyle(
-                          color: Color(0xFFE74C3C),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        activity.description,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.42),
+                          fontSize: 13,
+                          height: 1.55,
                         ),
                       ),
                     ],
-                  ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Info block ────────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withOpacity(0.07), width: 1),
+                      ),
+                      child: Column(
+                        children: [
+                          _activityInfoRow(Icons.calendar_today_rounded, activity.formattedDateRange, accentColor),
+                          if (activity.isMultiDay) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Divider(color: Colors.white.withOpacity(0.06), height: 1),
+                            ),
+                            _activityInfoRow(Icons.timelapse_rounded, activity.formattedDuration, accentColor),
+                          ],
+                          if (activity.location.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Divider(color: Colors.white.withOpacity(0.06), height: 1),
+                            ),
+                            _activityInfoRow(Icons.location_on_rounded, activity.location, accentColor),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Close button ──────────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.06),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Cerrar',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.55),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12 + MediaQuery.of(ctx).padding.bottom),
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cerrar',
-              style: TextStyle(color: Color(0xFFE74C3C)),
+        );
+      },
+    );
+  }
+
+  Widget _buildCountdownBlock(int days, Color accentColor) {
+    final String bigLabel;
+    final String subLabel;
+    final Color blockColor;
+
+    if (days < 0) {
+      bigLabel   = '–';
+      subLabel   = 'Finalizado';
+      blockColor = Colors.white24;
+    } else if (days == 0) {
+      bigLabel   = 'HOY';
+      subLabel   = '';
+      blockColor = const Color(0xFF5DCA88);
+    } else if (days == 1) {
+      bigLabel   = '1';
+      subLabel   = 'día';
+      blockColor = const Color(0xFFE8876A);
+    } else {
+      bigLabel   = '$days';
+      subLabel   = 'días';
+      blockColor = days <= 7 ? const Color(0xFFE8876A) : accentColor;
+    }
+
+    return Container(
+      width: 64,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: blockColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: blockColor.withOpacity(0.25), width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            bigLabel,
+            style: TextStyle(
+              color: blockColor,
+              fontSize: days >= 100 ? 22 : 30,
+              fontWeight: FontWeight.w900,
+              height: 1,
             ),
           ),
+          if (subLabel.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              subLabel,
+              style: TextStyle(
+                color: blockColor.withOpacity(0.7),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _activityInfoRow(IconData icon, String text, Color accentColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: accentColor.withOpacity(0.6), size: 15),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.65),
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2726,6 +2950,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _navigateToRecords({required bool isMinimumMarks}) {
+    if (isMinimumMarks) {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, _) => const MinimumMarksListScreen(),
+          transitionsBuilder: (context, animation, _, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -3335,31 +3572,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           
           // Footer con información de desarrollador y versión
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Text(
-                  'Powered by: Ditxon Milan',
-                  style: TextStyle(
-                    color: isDarkMode 
-                      ? Colors.white60
-                      : Colors.black54,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              child: Column(
+                children: [
+                  Text(
+                    'Powered by: Ditxon Milan',
+                    style: TextStyle(
+                      color: isDarkMode 
+                        ? Colors.white60
+                        : Colors.black54,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Versión 1.2.2+109',
-                  style: TextStyle(
-                    color: isDarkMode 
-                      ? Colors.white.withOpacity(0.4)
-                      : Colors.black.withOpacity(0.38),
-                    fontSize: 11,
+                  const SizedBox(height: 4),
+                  Text(
+                    'Versión 1.6.5+165',
+                    style: TextStyle(
+                      color: isDarkMode 
+                        ? Colors.white.withOpacity(0.4)
+                        : Colors.black.withOpacity(0.38),
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-              ],
+                  if (kBuildDate.isNotEmpty) ...[  
+                    const SizedBox(height: 2),
+                    Text(
+                      'Build: $kBuildDate',
+                      style: TextStyle(
+                        color: isDarkMode 
+                          ? Colors.white.withOpacity(0.3)
+                          : Colors.black.withOpacity(0.28),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],
@@ -3383,7 +3635,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         content: Text(
-          'FDPA App\nVersión 1.2.2+109\n\nAplicación oficial de la Federación Deportiva Peruana de Atletismo para consultar resultados, estadísticas y eventos.',
+          'FDPA App\nVersión 1.6.5+165${kBuildDate.isNotEmpty ? "  |  Build: $kBuildDate" : ""}\n\nAplicación oficial de la Federación Deportiva Peruana de Atletismo para consultar resultados, estadísticas y eventos.',
           style: TextStyle(
             color: Provider.of<ThemeProvider>(context).isDarkMode 
               ? Colors.white70 

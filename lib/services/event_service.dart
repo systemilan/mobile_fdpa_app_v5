@@ -387,6 +387,42 @@ class EventService {
     }
   }
 
+  /// Buscar atleta dentro de una prueba específica
+  /// Endpoint: GET /event-tests/:eventTestId/search-athlete?q=TEXTO
+  Future<EventTestSearchResponse> searchAthleteInTest(
+      String eventTestId, String query) async {
+    try {
+      final url =
+          Uri.parse('$_baseUrl/public/event-tests/$eventTestId/search-athlete')
+              .replace(queryParameters: {'q': query});
+
+      debugPrint('🔍 [EventService] searchAthleteInTest GET $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(Environment.connectTimeout, onTimeout: () {
+        throw Exception('Timeout en searchAthleteInTest');
+      });
+
+      debugPrint(
+          '📊 [EventService] searchAthleteInTest status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        return EventTestSearchResponse.fromJson(jsonData);
+      }
+      throw Exception(
+          'Error ${response.statusCode} en searchAthleteInTest: ${response.body}');
+    } catch (e) {
+      debugPrint('❌ [EventService] searchAthleteInTest: $e');
+      rethrow;
+    }
+  }
+
   /// Búsqueda global de atletas en todos los eventos
   /// [query] nombre o apellido del atleta
   /// [eventId] opcional: filtrar por evento específico

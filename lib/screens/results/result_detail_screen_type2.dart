@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/result_type1.dart';
 import '../../services/event_service.dart';
+import '../../services/socket_service.dart';
+import 'event_test_athlete_search_sheet.dart';
 
 class ResultDetailScreenType2 extends StatefulWidget {
   final String eventTestId;
@@ -43,6 +46,10 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
   String? _errorMessage;
   final EventService _eventService = EventService();
 
+  // Realtime
+  final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
+  Timer? _refreshDebounce;
+
   /// True si la fecha del evento ya pasó (o no se proporcionó fecha → asumir que ya pasó)
   bool get _isEventPast {
     final dateStr = widget.eventDate;
@@ -61,6 +68,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
   void initState() {
     super.initState();
     _loadResults();
+    _subscribeToSocket();
     _initAnimations();
   }
 
@@ -182,10 +190,55 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
+    for (final s in _socketSubs) {
+      s.cancel();
+    }
+    _socketSubs.clear();
     _fadeController.dispose();
     _slideController.dispose();
     _staggeredController.dispose();
     super.dispose();
+  }
+
+  /// Recarga silenciosa (sin spinner) para actualizaciones realtime
+  Future<void> _silentRefresh() async {
+    try {
+      final response = await _eventService.getRaceEventResults(
+        widget.eventTestId,
+        eventId: widget.eventId,
+      );
+      if (mounted) setState(() => _resultData = response.data);
+    } catch (_) {}
+  }
+
+  /// Suscribirse a eventos Socket.IO relevantes para esta pantalla
+  void _subscribeToSocket() {
+    final socket = SocketService();
+    final eventTestId = widget.eventTestId;
+    final eventId = widget.eventId;
+
+    void debounced() {
+      _refreshDebounce?.cancel();
+      _refreshDebounce = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) _silentRefresh();
+      });
+    }
+
+    _socketSubs
+      ..add(socket.on('series:created').listen((d) {
+        if (d['eventTestId'] == eventTestId) debounced();
+      }))
+      ..add(socket.on('series:updated').listen((_) { debounced(); }))
+      ..add(socket.on('series:deleted').listen((_) { debounced(); }))
+      ..add(socket.on('series:renamedAll').listen((d) {
+        if (eventId == null || d['eventId'] == eventId) debounced();
+      }))
+      ..add(socket.on('lifData:uploaded').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:created').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:updated').listen((_) { debounced(); }))
+      ..add(socket.on('lifData:deleted').listen((_) { debounced(); }))
+      ..add(socket.on('lynx:import:complete').listen((_) { debounced(); }));
   }
 
   @override
@@ -238,8 +291,8 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height * 0.15,
-                  maxHeight: MediaQuery.of(context).size.height * 0.28,
+                  minHeight: MediaQuery.of(context).size.height * 0.13,
+                  maxHeight: MediaQuery.of(context).size.height * 0.25,
                 ),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
@@ -260,11 +313,11 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                   ),
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 2),
                           Flexible(
                             child: FadeTransition(
                               opacity: _headerFadeAnimation,
@@ -419,7 +472,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
             'Resultados de la Prueba',
             style: TextStyle(
               color: Colors.white,
-              fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
+              fontSize: MediaQuery.of(context).size.width < 400 ? 16 : 20,
               fontWeight: FontWeight.w800,
               height: 1.1,
               letterSpacing: -0.5,
@@ -445,7 +498,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                 eventTest.displayedName,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
+                  fontSize: MediaQuery.of(context).size.width < 360 ? 14 : (MediaQuery.of(context).size.width < 400 ? 16 : 20),
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                   letterSpacing: -0.5,
@@ -509,35 +562,37 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          eventTest.test.commonName.isNotEmpty
-            ? eventTest.test.commonName
-            : eventTest.displayedName,
-          style: const TextStyle(
-            color: Color(0xFFE74C3C),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+        // Subtítulo solo si commonName es diferente al nombre mostrado
+        if (eventTest.test.commonName.isNotEmpty &&
+            eventTest.test.commonName != eventTest.displayedName) ...[  
+          const SizedBox(height: 2),
+          Text(
+            eventTest.test.commonName,
+            style: const TextStyle(
+              color: Color(0xFFE74C3C),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        ],
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               '${eventTest.gendersFormatted} - ${eventTest.categoriesFormatted}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white70,
-                fontSize: 14,
+                fontSize: MediaQuery.of(context).size.width < 360 ? 11 : 13,
                 fontWeight: FontWeight.w400,
               ),
             ),
             Text(
               eventTest.time,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white70,
-                fontSize: 14,
+                fontSize: MediaQuery.of(context).size.width < 360 ? 11 : 13,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -567,7 +622,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               'Buscar atleta',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -583,7 +638,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
       return Center(
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 40),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
@@ -605,7 +660,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                 'No hay resultados disponibles',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -626,13 +681,15 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
     }
 
     return Column(
-      children: _resultData!.series.map((serie) {
+      children: _resultData!.series
+          .where((serie) => serie.status && serie.results.isNotEmpty)
+          .map((serie) {
         return Column(
           children: [
             _buildSerieTitle(serie),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             _buildSerieResults(serie),
-            const SizedBox(height: 30),
+            const SizedBox(height: 18),
           ],
         );
       }).toList(),
@@ -647,7 +704,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
           serie.name,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -701,7 +758,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 15),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isDNS 
           ? Colors.grey.withOpacity(0.1)
@@ -718,14 +775,14 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
           width: 1,
         ),
       ),
-      child: Row(
+      child: IntrinsicHeight(
+        child: Row(
         children: [
           // Columna 1: Puesto y tiempo (15% del ancho)
           Expanded(
             flex: 15,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               decoration: BoxDecoration(
                 color: getPositionColor(),
                 borderRadius: const BorderRadius.only(
@@ -750,7 +807,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -768,24 +825,12 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        (hasLoadedResults || _isEventPast) ? 'DNS' : '- - -',
+                        athlete.athleteStatus != null && athlete.athleteStatus!.isNotEmpty
+                            ? athlete.athleteStatus!
+                            : '--',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '- - -',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                         textAlign: TextAlign.center,
@@ -801,8 +846,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
           Expanded(
             flex: 70,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -812,24 +856,32 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     athlete.name,
                     style: TextStyle(
                       color: isDNS ? Colors.white60 : Colors.white,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   // Información adicional
-                  Text(
-                    isDNS
-                        ? (hasLoadedResults || _isEventPast ? 'No participó' : 'Aún sin participar')
-                        : 'Clasificado',
-                    style: TextStyle(
-                      color: isDNS ? Colors.white.withOpacity(0.4) : const Color(0xFF2ED573),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  if (!isDNS)
+                    Text(
+                      'Clasificado',
+                      style: const TextStyle(
+                        color: Color(0xFF2ED573),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else if (athlete.athleteStatus != null && athlete.athleteStatus!.isNotEmpty)
+                    Text(
+                      'No participó',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -838,8 +890,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
           Expanded(
             flex: 15,
             child: Container(
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
                 borderRadius: const BorderRadius.only(
@@ -850,88 +901,46 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'EQUIPO',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
+                  Text(
+                    'EQUIPO',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
                     ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
                   ),
-                  const SizedBox(height: 8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      athlete.clubFormatted,
-                      style: TextStyle(
-                        color: isDNS ? Colors.white.withOpacity(0.4) : Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 3,
+                  const SizedBox(height: 2),
+                  Text(
+                    athlete.team,
+                    style: TextStyle(
+                      color: isDNS ? Colors.white.withOpacity(0.4) : Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
   void _showSearchDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1D1F28),
-        title: const Text(
-          'Buscar Atleta',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nombre del atleta...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE74C3C),
-            ),
-            child: const Text(
-              'Buscar',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EventTestAthleteSearchSheet(
+        eventTestId: widget.eventTestId,
+        eventService: _eventService,
       ),
     );
   }
