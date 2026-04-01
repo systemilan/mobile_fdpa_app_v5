@@ -765,12 +765,16 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
   }
 
   Widget _buildWindBadge(String wind) {
+    // Normalizar: quitar la palabra VIENTO/viento y espacios extra
+    final normalized = wind
+        .replaceAll(RegExp(r'viento\s*', caseSensitive: false), '')
+        .replaceAll(',', '.')
+        .trim();
+
     // Determinar si el viento es favorable o no
     double? val;
     try {
-      final cleaned =
-          wind.replaceAll(RegExp(r'[Vv]'), '').replaceAll(',', '.');
-      val = double.tryParse(cleaned);
+      val = double.tryParse(normalized);
     } catch (_) {}
 
     final bool isInvalid = val != null && val.abs() > 2.0;
@@ -790,7 +794,7 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
           border: Border.all(color: windColor.withOpacity(0.3), width: 1),
         ),
         child: Text(
-          wind.toUpperCase(),
+          normalized,
           style: TextStyle(
             color: windColor,
             fontSize: 9,
