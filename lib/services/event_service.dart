@@ -260,15 +260,34 @@ class EventService {
     }
   }
 
-  /// Obtener todos los eventos
-  Future<EventListResponse> getAllEvents() async {
+  /// Obtener eventos con filtros opcionales del endpoint público.
+  ///
+  /// [filter]: all | current-month | year
+  /// [year]: requerido cuando filter=year
+  /// [limit]: límite de resultados
+  Future<EventListResponse> getAllEvents({
+    String? filter,
+    int limit = 2000,
+    int? year,
+  }) async {
     try {
-      // Usar un límite alto para obtener todos los eventos
-      // Si en el futuro tienes más eventos, puedes aumentar este número
-      final url = Uri.parse('$_baseUrl/public/events?limit=2000');
+      final queryParams = <String, String>{
+        'limit': '$limit',
+      };
+
+      if (filter != null && filter.isNotEmpty) {
+        queryParams['filter'] = filter;
+      }
+      if (year != null) {
+        queryParams['year'] = '$year';
+      }
+
+      final url = Uri.parse('$_baseUrl/public/events').replace(
+        queryParameters: queryParams,
+      );
       
       if (Environment.enableLogs) {
-        print('🌐 Fetching all events from: $url');
+        print('🌐 Fetching events from: $url');
       }
 
       final response = await http.get(
@@ -303,7 +322,7 @@ class EventService {
       }
     } catch (e) {
       if (Environment.enableLogs) {
-        print('❌ Error fetching all events: $e');
+        print('❌ Error fetching events: $e');
       }
       rethrow;
     }

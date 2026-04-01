@@ -134,7 +134,7 @@ class _EventTestAthleteSearchSheetState
           ),
           const SizedBox(height: 4),
           const Text(
-            'Busca por nombre o número de documento',
+            'Escriba nombre o apellido (en cualquier orden)',
             style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
@@ -145,9 +145,9 @@ class _EventTestAthleteSearchSheetState
             focusNode: _focusNode,
             style: const TextStyle(color: Colors.white),
             textInputAction: TextInputAction.search,
-            textCapitalization: TextCapitalization.characters,
+            textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
-              hintText: 'Ej: MOMBRU o 12345678',
+              hintText: 'Escriba el nombre o apellido',
               hintStyle: const TextStyle(color: Colors.white38),
               filled: true,
               fillColor: Colors.white.withOpacity(0.07),

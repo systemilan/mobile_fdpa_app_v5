@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import '../../services/event_service.dart';
 import '../../services/socket_service.dart';
@@ -58,6 +61,8 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
   // Realtime
   final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
   Timer? _refreshDebounce;
+
+  AppStrings get s => context.read<LocaleProvider>().strings;
 
   @override
   void initState() {
@@ -179,7 +184,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Error al cargar los resultados: $e';
+          _errorMessage = s.errorLoadingResults(e.toString());
           _isLoading = false;
         });
       }
@@ -393,12 +398,12 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
+                  s.federationLine1,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -407,7 +412,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
+                  s.federationLine2,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -557,8 +562,8 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               size: 24,
             ),
             const SizedBox(width: 15),
-            const Text(
-              'Buscar atleta',
+            Text(
+              s.enterNameSurname,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -600,11 +605,11 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
     }
 
     if (_resultData == null || _resultData!.series.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20.0),
           child: Text(
-            'No hay resultados disponibles',
+            s.noResultsAvailable,
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16,
@@ -657,14 +662,18 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
           ),
           // Resultados de la serie
           ...sortedResults.map((athlete) {
+            final int? displayPos = int.tryParse(athlete.positionText.replaceAll('°', ''));
+            final bool isNoPosition = displayPos == null && athlete.positionText != '- - -';
             Color positionColor;
-            if (athlete.position == 1) {
+            if (isNoPosition) {
+              positionColor = Colors.grey.withOpacity(0.3);
+            } else if (displayPos == 1) {
               positionColor = const Color(0xFF2ED573);
-            } else if (athlete.position == 2) {
+            } else if (displayPos == 2) {
               positionColor = Colors.white.withOpacity(0.6);
-            } else if (athlete.position == 3) {
+            } else if (displayPos == 3) {
               positionColor = Colors.white.withOpacity(0.4);
-            } else if (athlete.position == null) {
+            } else if (displayPos == null) {
               positionColor = Colors.grey.withOpacity(0.3);
             } else {
               positionColor = Colors.white.withOpacity(0.3);
@@ -697,27 +706,16 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (_resultData?.eventTest.test.measuresWind == true)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'Viento: 0.3 M/S',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
       ],
     );
   }
 
   Widget _buildAthleteCard(FieldAthleteResult athlete, Color positionColor) {
+    final int? displayPos = int.tryParse(athlete.positionText.replaceAll('°', ''));
+    final bool isNoPosition = displayPos == null && athlete.positionText != '- - -';
+    final bool showWind = _resultData?.eventTest.test.measuresWind == true;
+    final double cardHeight = showWind ? 104 : 90;
+
     // Asegurar que siempre hay 6 intentos (rellenar con vacío si faltan)
     final attempts = List<String>.from(athlete.attempts);
     while (attempts.length < 6) {
@@ -728,14 +726,18 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: athlete.position == 1 
-          ? const Color(0xFF2ED573).withOpacity(0.15)
-          : Colors.white.withOpacity(0.05),
+        color: isNoPosition
+            ? Colors.white.withOpacity(0.03)
+            : (displayPos == 1
+                ? const Color(0xFF2ED573).withOpacity(0.15)
+                : Colors.white.withOpacity(0.05)),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: athlete.position == 1 
-            ? const Color(0xFF2ED573).withOpacity(0.3)
-            : Colors.white.withOpacity(0.1),
+          color: isNoPosition
+              ? Colors.white.withOpacity(0.06)
+              : (displayPos == 1
+                  ? const Color(0xFF2ED573).withOpacity(0.3)
+                  : Colors.white.withOpacity(0.1)),
           width: 1,
         ),
       ),
@@ -745,7 +747,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
           Expanded(
             flex: 15,
             child: Container(
-              height: 90,
+              height: cardHeight,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               decoration: BoxDecoration(
                 color: positionColor,
@@ -760,9 +762,9 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      athlete.position != null
-                          ? 'Puesto ${athlete.position}°'
-                          : (athlete.athleteStatus ?? '-'),
+                      int.tryParse(athlete.positionText.replaceAll('°', '')) != null
+                          ? 'Puesto ${athlete.positionText.replaceAll("°", "")}°'
+                          : athlete.positionText,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -794,7 +796,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
           Expanded(
             flex: 70,
             child: Container(
-              height: 90,
+              height: cardHeight,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +854,7 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
           Expanded(
             flex: 15,
             child: Container(
-              height: 90,
+              height: cardHeight,
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),
@@ -864,10 +866,10 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const FittedBox(
+                  FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'EQUIPO',
+                      s.team,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 9,

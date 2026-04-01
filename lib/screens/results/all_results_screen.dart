@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/event_list.dart';
+import '../../providers/locale_provider.dart';
 import '../../services/event_service.dart';
 import '../championship/championship_detail_screen.dart';
 
@@ -12,6 +15,10 @@ class AllResultsScreen extends StatefulWidget {
 
 class _AllResultsScreenState extends State<AllResultsScreen>
     with TickerProviderStateMixin {
+  static const String _filterAll = 'all';
+  static const String _filterCurrentYear = 'current-year';
+  static const String _filterCustomYear = 'custom-year';
+
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _staggeredController;
@@ -35,7 +42,8 @@ class _AllResultsScreenState extends State<AllResultsScreen>
   final EventService _eventService = EventService();
 
   // Estado de filtros
-  int _selectedYearIndex = 0;
+  String _selectedEventFilter = _filterAll;
+  String? _selectedYear;
   List<String> _years = [];
 
   @override
@@ -46,27 +54,37 @@ class _AllResultsScreenState extends State<AllResultsScreen>
   }
 
   Future<void> _loadEvents() async {
+    final s = context.read<LocaleProvider>().strings;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final response = await _eventService.getAllEvents();
+      // Primero, obtener años disponibles para el selector
+      final allResponse = await _eventService.getAllEvents(filter: 'all', limit: 2000);
       
       // Extraer años únicos y ordenarlos
       final yearsSet = <String>{};
-      for (var event in response.data) {
+      for (var event in allResponse.data) {
         if (event.year.isNotEmpty) {
           yearsSet.add(event.year);
         }
       }
       final yearsList = yearsSet.toList()..sort((a, b) => b.compareTo(a)); // Descendente
+
+      final currentYear = DateTime.now().year.toString();
+      final selectedYear = _selectedYear ??
+          (yearsList.contains(currentYear)
+              ? currentYear
+              : (yearsList.isNotEmpty ? yearsList.first : currentYear));
+
+      final response = await _fetchEventsByCurrentFilter(selectedYear: selectedYear);
       
       setState(() {
         _allEvents = response.data;
-        // Agregar "Todos" al inicio de la lista de años
-        _years = ['Todos', ...yearsList];
+        _years = yearsList;
+        _selectedYear = selectedYear;
         _isLoading = false;
       });
       
@@ -74,12 +92,87 @@ class _AllResultsScreenState extends State<AllResultsScreen>
       print('Eventos cargados: ${_allEvents.length}');
       print('Años disponibles: $_years');
     } catch (e) {
+      // Fallback: cargar todos y filtrar en cliente
+      try {
+        final fallback = await _eventService.getAllEvents(limit: 2000);
+
+        final yearsSet = <String>{};
+        for (var event in fallback.data) {
+          if (event.year.isNotEmpty) yearsSet.add(event.year);
+        }
+        final yearsList = yearsSet.toList()..sort((a, b) => b.compareTo(a));
+        final currentYear = DateTime.now().year.toString();
+        final selectedYear = _selectedYear ??
+            (yearsList.contains(currentYear)
+                ? currentYear
+                : (yearsList.isNotEmpty ? yearsList.first : currentYear));
+
+        var localEvents = fallback.data;
+        if (_selectedEventFilter == _filterCurrentYear) {
+          localEvents = localEvents.where((e) => e.year == currentYear).toList();
+        } else if (_selectedEventFilter == _filterCustomYear) {
+          localEvents = localEvents.where((e) => e.year == selectedYear).toList();
+        }
+
+        if (mounted) {
+          setState(() {
+            _allEvents = localEvents;
+            _years = yearsList;
+            _selectedYear = selectedYear;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
+        return;
+      } catch (_) {
+        // continuar al manejo de error abajo
+      }
+
       setState(() {
-        _errorMessage = 'Error al cargar los eventos: $e';
+        _errorMessage = s.errorLoadingEvents(e.toString());
         _isLoading = false;
-        // Fallback con años por defecto incluyendo "Todos"
-        _years = ['Todos', '2025', '2024', '2023', '2022'];
+        _years = ['2026', '2025', '2024', '2023', '2022'];
+        _selectedYear ??= DateTime.now().year.toString();
       });
+    }
+  }
+
+  Future<EventListResponse> _fetchEventsByCurrentFilter({required String selectedYear}) {
+    if (_selectedEventFilter == _filterCurrentYear) {
+      return _eventService.getAllEvents(
+        filter: 'year',
+        year: DateTime.now().year,
+        limit: 2000,
+      );
+    }
+
+    if (_selectedEventFilter == _filterCustomYear) {
+      final parsedYear = int.tryParse(selectedYear);
+      if (parsedYear != null) {
+        return _eventService.getAllEvents(
+          filter: 'year',
+          year: parsedYear,
+          limit: 2000,
+        );
+      }
+    }
+
+    return _eventService.getAllEvents(filter: 'all', limit: 2000);
+  }
+
+  Future<void> _onFilterChanged(String filter) async {
+    setState(() {
+      _selectedEventFilter = filter;
+    });
+    await _loadEvents();
+  }
+
+  Future<void> _onYearChanged(String year) async {
+    setState(() {
+      _selectedYear = year;
+    });
+    if (_selectedEventFilter == _filterCustomYear) {
+      await _loadEvents();
     }
   }
 
@@ -186,6 +279,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = context.read<LocaleProvider>().strings;
     if (_isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFF040512),
@@ -214,7 +308,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadEvents,
-                child: const Text('Reintentar'),
+                child: Text(s.retry),
               ),
             ],
           ),
@@ -323,6 +417,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
   }
 
   Widget _buildHeader() {
+    final s = context.read<LocaleProvider>().strings;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -377,13 +472,13 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
-                  style: TextStyle(
+                  s.federationLine1,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -391,8 +486,8 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
-                  style: TextStyle(
+                  s.federationLine2,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w400,
@@ -408,6 +503,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
   }
 
   Widget _buildTitleSection() {
+    final s = context.read<LocaleProvider>().strings;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -415,7 +511,7 @@ class _AllResultsScreenState extends State<AllResultsScreen>
         Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'Todos los resultados',
+            s.allResults,
             style: TextStyle(
               color: Colors.white,
               fontSize: MediaQuery.of(context).size.width < 400 ? 18 : 20,
@@ -433,56 +529,123 @@ class _AllResultsScreenState extends State<AllResultsScreen>
   }
 
   Widget _buildYearFilters() {
-    return Container(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _years.length,
-        itemBuilder: (context, index) {
-          final isSelected = index == _selectedYearIndex;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedYearIndex = index;
-              });
-            },
-            child: Container(
-              margin: EdgeInsets.only(right: index < _years.length - 1 ? 10 : 0),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: isSelected 
-                  ? const Color(0xFFE74C3C).withOpacity(0.1)
-                  : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  _years[index],
-                  style: TextStyle(
-                    color: isSelected 
-                      ? const Color(0xFFC0392B)
-                      : const Color(0xFFE74C3C),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+    final s = context.read<LocaleProvider>().strings;
+    Widget buildFilterChip({
+      required String label,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(right: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE74C3C) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFE74C3C)
+                  : const Color(0xFFE74C3C).withOpacity(0.22),
+              width: 1,
             ),
-          );
-        },
-      ),
+            boxShadow: [
+              BoxShadow(
+                color: selected
+                    ? const Color(0xFFE74C3C).withOpacity(0.24)
+                    : Colors.black.withOpacity(0.1),
+                blurRadius: selected ? 8 : 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFFE74C3C),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 40,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              buildFilterChip(
+                label: s.all,
+                selected: _selectedEventFilter == _filterAll,
+                onTap: () => _onFilterChanged(_filterAll),
+              ),
+              buildFilterChip(
+                label: s.currentYear,
+                selected: _selectedEventFilter == _filterCurrentYear,
+                onTap: () => _onFilterChanged(_filterCurrentYear),
+              ),
+              buildFilterChip(
+                label: s.byYear,
+                selected: _selectedEventFilter == _filterCustomYear,
+                onTap: () => _onFilterChanged(_filterCustomYear),
+              ),
+            ],
+          ),
+        ),
+        if (_selectedEventFilter == _filterCustomYear && _years.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 36,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _years.length,
+              itemBuilder: (context, index) {
+                final year = _years[index];
+                final isSelected = _selectedYear == year;
+
+                return GestureDetector(
+                  onTap: () => _onYearChanged(year),
+                  child: Container(
+                    margin: EdgeInsets.only(right: index < _years.length - 1 ? 8 : 0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFE74C3C).withOpacity(0.2)
+                          : Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFE74C3C)
+                            : Colors.white.withOpacity(0.16),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      year,
+                      style: TextStyle(
+                        color: isSelected ? const Color(0xFFE74C3C) : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildEventsList() {
-    final events = _getEventsForYear(_years.isNotEmpty ? _years[_selectedYearIndex] : 'Todos');
+    final s = context.read<LocaleProvider>().strings;
+    final events = _allEvents;
     
     if (events.isEmpty) {
       return Center(
@@ -506,9 +669,9 @@ class _AllResultsScreenState extends State<AllResultsScreen>
                 size: 48,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No hay eventos disponibles',
-                style: TextStyle(
+              Text(
+                s.noEventsAvailable,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -517,7 +680,11 @@ class _AllResultsScreenState extends State<AllResultsScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'No se encontraron eventos para este año',
+                _selectedEventFilter == _filterAll
+                    ? s.noEventsFound
+                    : _selectedEventFilter == _filterCurrentYear
+                        ? s.noCurrentYearEvents
+                        : s.noSelectedYearEvents(int.tryParse(_selectedYear ?? '') ?? 0),
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.6),
                   fontSize: 14,
@@ -682,17 +849,5 @@ class _AllResultsScreenState extends State<AllResultsScreen>
         ),
       ),
     );
-  }
-
-  List<EventItem> _getEventsForYear(String year) {
-    // Si es "Todos", devolver todos los eventos
-    if (year == 'Todos') {
-      print('Filtrando por "Todos": ${_allEvents.length} eventos');
-      return _allEvents;
-    }
-    // Filtrar eventos por año específico
-    final filtered = _allEvents.where((event) => event.year == year).toList();
-    print('Filtrando por año $year: ${filtered.length} eventos');
-    return filtered;
   }
 }

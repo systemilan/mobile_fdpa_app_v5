@@ -4,6 +4,7 @@
 class FieldAthleteResult {
   final int displayOrder;
   final int? position;
+  final String? positionAthlete;
   final String? athleteStatus;
   final String athleteId;
   final String name;
@@ -21,6 +22,7 @@ class FieldAthleteResult {
   FieldAthleteResult({
     this.displayOrder = 0,
     this.position,
+    this.positionAthlete,
     this.athleteStatus,
     required this.athleteId,
     required this.name,
@@ -40,6 +42,7 @@ class FieldAthleteResult {
     return FieldAthleteResult(
       displayOrder: json['displayOrder'] as int? ?? 0,
       position: json['position'] as int?,
+      positionAthlete: json['positionAthlete']?.toString(),
       athleteStatus: json['athleteStatus']?.toString(),
       athleteId: json['athleteId']?.toString() ?? '',
       name: json['name'] ?? '',
@@ -62,8 +65,9 @@ class FieldAthleteResult {
     );
   }
 
-  /// Texto de posición: número si tiene posición, athleteStatus si es DNS/DNF/NH/NM, '-' si nada
+  /// Texto de posición: positionAthlete (NSP/DNS/DFQ…) > posición numérica > athleteStatus > '-'
   String get positionText {
+    if (positionAthlete != null && positionAthlete!.isNotEmpty) return positionAthlete!;
     if (position != null) return '${position}°';
     if (athleteStatus != null && athleteStatus!.isNotEmpty) return athleteStatus!;
     return '-';

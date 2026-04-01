@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import '../../models/result_type1.dart';
 import '../../services/event_service.dart';
@@ -64,6 +67,8 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
     }
   }
 
+  AppStrings get s => context.read<LocaleProvider>().strings;
+
   @override
   void initState() {
     super.initState();
@@ -89,7 +94,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error al cargar los resultados: $e';
+        _errorMessage = s.errorLoadingResults(e.toString());
         _isLoading = false;
       });
     }
@@ -271,7 +276,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadResults,
-                child: const Text('Reintentar'),
+                child: Text(s.retry),
               ),
             ],
           ),
@@ -431,12 +436,12 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
+                  s.federationLine1,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -445,7 +450,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
+                  s.federationLine2,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -469,7 +474,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Resultados de la Prueba',
+            s.eventResults,
             style: TextStyle(
               color: Colors.white,
               fontSize: MediaQuery.of(context).size.width < 400 ? 16 : 20,
@@ -618,8 +623,8 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               size: 24,
             ),
             const SizedBox(width: 15),
-            const Text(
-              'Buscar atleta',
+            Text(
+              s.enterNameSurname,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -656,8 +661,8 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                 size: 48,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No hay resultados disponibles',
+              Text(
+              s.noResultsAvailable,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -667,7 +672,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
               ),
               const SizedBox(height: 8),
               Text(
-                'Los resultados de esta prueba aún no han sido registrados',
+                s.resultsNotRegistered,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.6),
                   fontSize: 14,
@@ -737,8 +742,8 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
 
     return Column(
       children: sortedResults.map((athlete) {
-        final position = athlete.position ?? 0;
-        return _buildAthleteCard(athlete, position, hasLoadedResults: hasLoadedResults);
+        final int? displayPos = int.tryParse(athlete.positionText.replaceAll('°', ''));
+        return _buildAthleteCard(athlete, displayPos ?? 0, hasLoadedResults: hasLoadedResults);
       }).toList(),
     );
   }
@@ -797,7 +802,9 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        'Puesto ${athlete.positionText}',
+                      int.tryParse(athlete.positionText.replaceAll('°', '')) != null
+                          ? 'Puesto ${athlete.positionText.replaceAll("°", "")}°'
+                            : athlete.positionText,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -825,9 +832,9 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        athlete.athleteStatus != null && athlete.athleteStatus!.isNotEmpty
-                            ? athlete.athleteStatus!
-                            : '--',
+                        athlete.positionText != '-' && athlete.positionText != '--'
+                            ? athlete.positionText
+                            : (athlete.athleteStatus ?? '--'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -866,7 +873,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                   // Información adicional
                   if (!isDNS)
                     Text(
-                      'Clasificado',
+                      s.qualified,
                       style: const TextStyle(
                         color: Color(0xFF2ED573),
                         fontSize: 11,
@@ -875,7 +882,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                     )
                   else if (athlete.athleteStatus != null && athlete.athleteStatus!.isNotEmpty)
                     Text(
-                      'No participó',
+                      s.didNotParticipate,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
                         fontSize: 11,
@@ -902,7 +909,7 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'EQUIPO',
+                    s.team,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 9,

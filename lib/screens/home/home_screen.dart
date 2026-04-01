@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_update/in_app_update.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../championship/championship_detail_screen.dart';
 import '../results/all_results_screen.dart';
 import '../records/records_screen.dart';
 import '../minimum_marks/minimum_marks_list_screen.dart';
+import '../rankings/rankings_list_screen.dart';
 import '../../config/environment.dart';
 import '../../config/build_info.dart';
 import '../../services/update_service.dart';
@@ -20,6 +22,8 @@ import '../../models/event.dart' as EventModel;
 import '../../models/event_list.dart';
 import '../../models/calendar_activity.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/locale_provider.dart';
+import '../../l10n/app_strings.dart';
 import 'global_athlete_search_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -64,10 +68,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Suscripciones realtime
   final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
 
-  // Fechas de actualización desde la API
-  String _nationalRecordsDate = 'Cargando...';
-  String _minimumMarksDate = 'Cargando...';
-  String _rankingDate = 'Cargando...';
+  // Fechas de actualización desde la API (ISO crudo para formateo por idioma)
+  String? _nationalRecordsDateIso;
+  String? _minimumMarksDateIso;
+  String? _rankingDateIso;
+  bool _datesLoaded = false;
+  String _appVersion = '--';
 
   @override
   void initState() {
@@ -159,6 +165,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       // Cargar fechas de actualización
       _loadUpdateDates();
+
+      // Cargar versión instalada para mostrarla en Drawer/About
+      _loadAppVersion();
       
       // Verificar actualizaciones después de que se cargue la pantalla
       _checkForUpdatesOnStartup();
@@ -179,6 +188,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = '${info.version}+${info.buildNumber}';
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadUpdateDates() async {
     try {
       final url = Uri.parse('${Environment.publicBaseUrl}/app/update-dates');
@@ -188,32 +208,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final data = json['data'];
         if (mounted) {
           setState(() {
-            _nationalRecordsDate = _formatDate(data['nationalRecords']?['lastUpdated']);
-            _minimumMarksDate = _formatDate(data['minimumMarks']?['lastUpdated']);
-            _rankingDate = _formatDate(data['ranking']?['lastUpdated']);
+            _nationalRecordsDateIso = data['nationalRecords']?['lastUpdated']?.toString();
+            _minimumMarksDateIso = data['minimumMarks']?['lastUpdated']?.toString();
+            _rankingDateIso = data['rankings']?['lastUpdated']?.toString();
+            _datesLoaded = true;
           });
         }
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _nationalRecordsDate = '--';
-          _minimumMarksDate = '--';
-          _rankingDate = '--';
+          _nationalRecordsDateIso = null;
+          _minimumMarksDateIso = null;
+          _rankingDateIso = null;
+          _datesLoaded = true;
         });
       }
     }
   }
 
-  String _formatDate(String? isoDate) {
-    if (isoDate == null) return '--';
+  String _formatDate(String? isoDate, AppStrings s) {
+    if (isoDate == null || isoDate.isEmpty) {
+      return _datesLoaded ? '--' : s.loading;
+    }
     try {
       final dt = DateTime.parse(isoDate).toLocal();
-      const months = [
-        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-      ];
-      return 'Lista actualizada el ${dt.day} de ${months[dt.month - 1]} de ${dt.year}';
+      final months = s.languageCode == 'es'
+          ? const [
+              'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ]
+          : const [
+              'January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+      final dateText = s.languageCode == 'es'
+          ? '${dt.day} de ${months[dt.month - 1]} de ${dt.year}'
+          : '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+      return s.rankingListUpdated(dateText);
     } catch (_) {
       return '--';
     }
@@ -661,6 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildGlobalSearchBar() {
     final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final s = context.watch<LocaleProvider>().strings;
     return GestureDetector(
       onTap: () {
         showModalBottomSheet(
@@ -692,7 +725,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 size: 20),
             const SizedBox(width: 10),
             Text(
-              'Buscar atleta en todos los eventos...',
+              s.enterNameSurname,
               style: TextStyle(
                 color: isDarkMode ? Colors.white38 : Colors.black38,
                 fontSize: 14,
@@ -717,6 +750,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildHeader() {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final s = context.watch<LocaleProvider>().strings;
     
     return Row(
       children: [
@@ -754,7 +788,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Federación Deportiva',
+                  s.federationLine1,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black87,
                     fontSize: 13,
@@ -767,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Peruana de Atletismo',
+                  s.federationLine2,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black87,
                     fontSize: 13,
@@ -891,6 +925,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildLastResults() {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final s = Provider.of<LocaleProvider>(context).strings;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -899,9 +934,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Últimos resultados',
+              s.latestResults,
               style: TextStyle(
-                color: const Color(0xFFE74C3C),
+                color: isDarkMode ? const Color(0xFFE74C3C) : const Color(0xFFFF6868),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -949,7 +984,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 );
               },
               child: Text(
-                'Ver todos',
+                s.viewAll,
                 style: TextStyle(
                   color: isDarkMode ? Colors.white70 : Colors.black54,
                   fontSize: 13,
@@ -981,7 +1016,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'No hay resultados recientes',
+                        s.noRecentResults,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white60 : Colors.black54,
                           fontSize: 16,
@@ -990,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Los resultados de eventos pasados aparecerán aquí',
+                        s.pastResultsHere,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white38 : Colors.black38,
                           fontSize: 13,
@@ -1015,6 +1050,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         result['date']!,
                         result['title']!,
                         result['location']!,
+                        index,
                       ),
                     );
                   },
@@ -1039,8 +1075,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return [];
   }
 
-  Widget _buildResultCard(String? eventId, String date, String title, String location) {
+  Widget _buildResultCard(String? eventId, String date, String title, String location, [int cardIndex = 0]) {
     final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final lightBg = Colors.white;
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1138,13 +1175,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         height: 150,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1D1F28) : Colors.white,
+          color: isDark ? const Color(0xFF1D1F28) : lightBg,
           borderRadius: BorderRadius.circular(15),
-          border: isDark ? null : Border.all(color: Colors.black12),
           boxShadow: [
             BoxShadow(
-              color: isDark ? Colors.black26 : Colors.black12,
-              blurRadius: 10,
+              color: isDark ? Colors.black38 : Colors.black.withOpacity(0.09),
+              blurRadius: isDark ? 10 : 18,
               offset: const Offset(0, 4),
             ),
           ],
@@ -1205,27 +1241,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildStatsSections() {
+    final s = context.watch<LocaleProvider>().strings;
     return Column(
       children: [
         _buildRankingCard(
-          title: 'Marcas Mínimas',
-          subtitle: _minimumMarksDate,
+          title: s.minimumMarks,
+          subtitle: _formatDate(_minimumMarksDateIso, s),
           imagePath: 'assets/images/botom1.jpg',
+          lightColor: const Color(0xFFFFF0F0),
           onTap: () => _navigateToRecords(isMinimumMarks: true),
         ),
         const SizedBox(height: 15),
         _buildRankingCard(
-          title: 'Records Nacionales',
-          subtitle: _nationalRecordsDate,
+          title: s.nationalRecords,
+          subtitle: _formatDate(_nationalRecordsDateIso, s),
           imagePath: 'assets/images/botom2.jpg',
+          lightColor: const Color(0xFFEEF4FF),
           onTap: () => _navigateToRecords(isMinimumMarks: false),
         ),
         const SizedBox(height: 15),
         _buildRankingCard(
-          title: 'Ranking Nacional',
-          subtitle: _rankingDate,
+          title: s.nationalRanking,
+          subtitle: _formatDate(_rankingDateIso, s),
           imagePath: 'assets/images/botom3.jpg',
-          onTap: () => _showStatsDetails('Ranking Nacional'),
+          lightColor: const Color(0xFFF5F0FF),
+          onTap: () => Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, _) =>
+                  const RankingsListScreen(),
+              transitionsBuilder: (context, animation, _, child) =>
+                  FadeTransition(opacity: animation, child: child),
+              transitionDuration: const Duration(milliseconds: 400),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
+            ),
+          ),
         ),
       ],
     );
@@ -1236,15 +1286,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required String subtitle,
     required String imagePath,
     required VoidCallback onTap,
+    Color lightColor = Colors.white,
   }) {
-    const cardColor = Color(0xFF1D1F28);
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final cardColor = isDark ? const Color(0xFF1D1F28) : const Color(0xFFD9473A);
+    final gradientStart = isDark ? const Color(0xFF1D1F28) : const Color(0xFFD9473A);
+    final gradientMid = isDark ? const Color(0xEE1D1F28) : const Color(0xCCD9473A);
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: Container(
           width: double.infinity,
-          color: cardColor,
+          decoration: BoxDecoration(
+            color: cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black38 : Colors.black.withOpacity(0.09),
+                blurRadius: isDark ? 10 : 18,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Stack(
             children: [
               // Imagen en el lado derecho
@@ -1258,14 +1321,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   fit: BoxFit.cover,
                 ),
               ),
-              // Capa oscura encima de la imagen para apagarla
+              // Capa oscura/clara encima de la imagen para apagarla
               Positioned(
                 right: 0,
                 top: 0,
                 bottom: 0,
                 width: 160,
                 child: Container(
-                  color: Colors.black.withOpacity(0.45),
+                  color: Colors.black.withOpacity(isDark ? 0.45 : 0.25),
                 ),
               ),
               // Gradiente de fusión: cardColor → transparente (izq → der)
@@ -1275,14 +1338,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 bottom: 0,
                 width: 180,
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
-                      stops: [0.0, 0.35, 1.0],
+                      stops: const [0.0, 0.35, 1.0],
                       colors: [
-                        cardColor,
-                        Color(0xEE1D1F28),
+                        gradientStart,
+                        gradientMid,
                         Colors.transparent,
                       ],
                     ),
@@ -1306,8 +1369,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: Colors.white60,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.75),
                         fontSize: 12,
                       ),
                     ),
@@ -1331,11 +1394,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1D1F28) : Colors.white,
           borderRadius: BorderRadius.circular(15),
-          border: isDark ? null : Border.all(color: Colors.black12),
           boxShadow: [
             BoxShadow(
-              color: isDark ? Colors.black26 : Colors.black12,
-              blurRadius: 10,
+              color: isDark ? Colors.black38 : Colors.black.withOpacity(0.09),
+              blurRadius: isDark ? 10 : 18,
               offset: const Offset(0, 4),
             ),
           ],
@@ -1386,7 +1448,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildUpcomingEvents() {
     final now = DateTime.now();
-    final upcomingEvents = _generateUpcomingEvents(now);
+    final s = Provider.of<LocaleProvider>(context).strings;
+    final upcomingEvents = _generateUpcomingEvents(now, s.monthNamesShort);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1394,9 +1457,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Próximos eventos',
-              style: TextStyle(
+            Text(
+              s.upcomingEvents,
+              style: const TextStyle(
                 color: Color(0xFFE74C3C),
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -1406,9 +1469,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onTap: () {
                 _showCalendar(context);
               },
-              child: const Text(
-                'Abrir calendario',
-                style: TextStyle(
+              child: Text(
+                s.openCalendar,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 16,
                 ),
@@ -1439,7 +1502,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No hay eventos próximos',
+                        s.noUpcomingEvents,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.6),
                           fontSize: 14,
@@ -1472,12 +1535,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  List<Map<String, String>> _generateUpcomingEvents(DateTime currentDate) {
+  List<Map<String, String>> _generateUpcomingEvents(DateTime currentDate, List<String> monthNamesShort) {
     final events = <Map<String, String>>[];
-    final monthNames = [
-      'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.',
-      'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.'
-    ];
+    final monthNames = monthNamesShort;
 
     // Usar eventos reales de la API
     if (_upcomingEvents.isNotEmpty) {
@@ -1499,11 +1559,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildEventCard(String day, String month, String year, bool isNext) {
+    final s = context.read<LocaleProvider>().strings;
     return GestureDetector(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Evento del $day de $month $year'),
+            content: Text(s.eventOnDate(day, month, year)),
             backgroundColor: const Color(0xFFE74C3C),
           ),
         );
@@ -1654,16 +1715,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Widget para mostrar próximos eventos desde la API de calendario
   Widget _buildUpcomingEventsFromCalendar() {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final s = Provider.of<LocaleProvider>(context).strings;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Próximos eventos',
+            Text(
+              s.upcomingEvents,
               style: TextStyle(
-                color: Color(0xFFE74C3C),
+                color: isDark ? const Color(0xFFE74C3C) : const Color(0xFFFF6868),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1672,10 +1735,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onTap: () {
                 _showCalendarFromActivities(context);
               },
-              child: const Text(
-                'Abrir calendario',
+              child: Text(
+                s.openCalendar,
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: isDark ? Colors.white54 : Colors.black45,
                   fontSize: 13,
                 ),
               ),
@@ -1687,10 +1750,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ? Container(
                 height: 120,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.black.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.black.withOpacity(0.08),
                     width: 1,
                   ),
                 ),
@@ -1700,14 +1767,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       Icon(
                         Icons.calendar_today_outlined,
-                        color: Colors.white.withOpacity(0.4),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.4)
+                            : Colors.black38,
                         size: 32,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No hay eventos próximos',
+                        s.noUpcomingEvents,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: isDark ? Colors.white.withOpacity(0.6) : Colors.black54,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1723,7 +1792,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   itemCount: _calendarActivities.length > 6 ? 6 : _calendarActivities.length,
                   itemBuilder: (context, index) {
                     final activity = _calendarActivities[index];
-                    return _buildEventCardFromActivity(activity, index == 0);
+                    return _buildEventCardFromActivity(activity, index == 0, index);
                   },
                 ),
               ),
@@ -1734,7 +1803,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Card de evento usando datos de CalendarActivity
-  Widget _buildEventCardFromActivity(CalendarActivity activity, bool isNext) {
+  Widget _buildEventCardFromActivity(CalendarActivity activity, bool isNext, [int cardIndex = 0]) {
+    final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final s = Provider.of<LocaleProvider>(context, listen: false).strings;
+    final lightEventBg = Colors.white;
     return GestureDetector(
       onTap: () {
         // Si la actividad tiene un eventId, navegar al detalle del campeonato
@@ -1760,13 +1832,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         margin: const EdgeInsets.only(right: 15),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: isNext ? const Color(0xFFE74C3C) : Colors.white,
+          color: isNext
+              ? const Color(0xFFE74C3C)
+              : (isDark ? const Color(0xFF1D1F28) : lightEventBg),
           borderRadius: BorderRadius.circular(15),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Colors.black26,
-              blurRadius: 5,
-              offset: Offset(0, 3),
+              color: isNext
+                  ? const Color(0xFFE74C3C).withOpacity(0.35)
+                  : Colors.black.withOpacity(isDark ? 0.20 : 0.10),
+              blurRadius: isNext ? 12 : 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1783,7 +1859,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }
               }(),
               style: TextStyle(
-                color: isNext ? Colors.white : const Color(0xFF1D1F28),
+                color: isNext
+                    ? Colors.white
+                    : (Provider.of<ThemeProvider>(context, listen: false).isDarkMode
+                        ? Colors.white
+                        : const Color(0xFF1D1F28)),
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
@@ -1793,17 +1873,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               () {
                 try {
                   final date = DateTime.parse(activity.dateStart);
-                  final monthNames = [
-                    'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.',
-                    'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.'
-                  ];
-                  return monthNames[date.month - 1];
+                  return s.monthNamesShort[date.month - 1];
                 } catch (e) {
                   return '--';
                 }
               }(),
               style: TextStyle(
-                color: isNext ? Colors.white : const Color(0xFF1D1F28),
+                color: isNext
+                    ? Colors.white
+                    : (Provider.of<ThemeProvider>(context, listen: false).isDarkMode
+                        ? Colors.white70
+                        : const Color(0xFF1D1F28)),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -1819,7 +1899,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 }
               }(),
               style: TextStyle(
-                color: isNext ? Colors.white70 : Colors.grey,
+                color: isNext
+                    ? Colors.white70
+                    : (Provider.of<ThemeProvider>(context, listen: false).isDarkMode
+                        ? Colors.white38
+                        : Colors.black45),
                 fontSize: 10,
               ),
             ),
@@ -1831,12 +1915,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Descargar PDF del calendario de eventos
   Future<void> _downloadCalendarPdf() async {
+    final s = context.read<LocaleProvider>().strings;
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('La descarga de PDF solo está disponible en la app móvil.'),
+        SnackBar(
+          content: Text(s.pdfMobileOnly),
           backgroundColor: Colors.orange,
-          duration: Duration(seconds: 4),
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -1844,10 +1929,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -1855,11 +1940,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
-                SizedBox(width: 16),
-                Text('Descargando calendario PDF...'),
+                const SizedBox(width: 16),
+                Text(s.downloadingCalendarPdf),
               ],
             ),
-            duration: Duration(seconds: 30),
+            duration: const Duration(seconds: 30),
           ),
         );
       }
@@ -1871,11 +1956,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Calendario descargado en: $filePath'),
+            content: Text(s.calendarDownloaded(filePath)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'OK',
+              label: s.ok,
               textColor: Colors.white,
               onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
@@ -1887,7 +1972,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al descargar PDF: $e'),
+            content: Text(s.errorDownloadingPdf(e.toString())),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -1903,6 +1988,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        final s = context.read<LocaleProvider>().strings;
         return DraggableScrollableSheet(
           initialChildSize: 0.80,
           minChildSize: 0.5,
@@ -1978,9 +2064,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 width: 1,
                                               ),
                                             ),
-                                            child: const Text(
-                                              'TEMPORADA 2026',
-                                              style: TextStyle(
+                                            child: Text(
+                                              s.seasonYear(2026),
+                                              style: const TextStyle(
                                                 color: Colors.white60,
                                                 fontSize: 9,
                                                 fontWeight: FontWeight.w700,
@@ -1989,9 +2075,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          const Text(
-                                            'Calendario',
-                                            style: TextStyle(
+                                          Text(
+                                            s.calendarWord,
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 26,
                                               fontWeight: FontWeight.w800,
@@ -1999,9 +2085,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               letterSpacing: -0.5,
                                             ),
                                           ),
-                                          const Text(
-                                            'de Eventos',
-                                            style: TextStyle(
+                                          Text(
+                                            s.ofEventsWord,
+                                            style: const TextStyle(
                                               color: Color(0xFFE74C3C),
                                               fontSize: 26,
                                               fontWeight: FontWeight.w800,
@@ -2092,9 +2178,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   size: 48,
                                 ),
                                 const SizedBox(height: 14),
-                                const Text(
-                                  'No hay eventos próximos',
-                                  style: TextStyle(
+                                Text(
+                                  s.noUpcomingEvents,
+                                  style: const TextStyle(
                                     color: Colors.white38,
                                     fontSize: 15,
                                   ),
@@ -2742,8 +2828,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       blockColor = days <= 7 ? const Color(0xFFE8876A) : accentColor;
     }
 
+    final bool isToday = days == 0;
+    final double bigFontSize = isToday
+        ? 18
+        : (days >= 100 ? 22 : 30);
+
     return Container(
-      width: 64,
+      width: isToday ? 82 : 64,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: blockColor.withOpacity(0.1),
@@ -2753,13 +2844,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            bigLabel,
-            style: TextStyle(
-              color: blockColor,
-              fontSize: days >= 100 ? 22 : 30,
-              fontWeight: FontWeight.w900,
-              height: 1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              bigLabel,
+              style: TextStyle(
+                color: blockColor,
+                fontSize: bigFontSize,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+              maxLines: 1,
+              softWrap: false,
             ),
           ),
           if (subLabel.isNotEmpty) ...[
@@ -2805,20 +2901,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       stream: Stream.periodic(const Duration(seconds: 1)),
       builder: (context, snapshot) {
         final now = DateTime.now();
+        final s = Provider.of<LocaleProvider>(context, listen: false).strings;
         final dayNumber = now.day;
-        final monthNames = [
-          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-        ];
-        final monthName = monthNames[now.month - 1];
+        final monthName = s.monthNames[now.month - 1];
         final year = now.year;
         
         final hour = now.hour.toString().padLeft(2, '0');
         final minute = now.minute.toString().padLeft(2, '0');
         final second = now.second.toString().padLeft(2, '0');
         
-        final weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        final weekDay = weekDays[now.weekday % 7];
+        final weekDay = s.weekDayNames[now.weekday % 7];
         
         final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
         return Container(
@@ -2877,8 +2969,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       Text(
                         monthName,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                         ),
@@ -2886,7 +2978,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Text(
                         '$year',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: isDark ? Colors.white.withOpacity(0.6) : Colors.black45,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -2900,7 +2992,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Container(
                 height: 1,
                 width: 100,
-                color: Colors.white.withOpacity(0.2),
+                color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
               ),
               const SizedBox(height: 12),
               // Hora actual
@@ -3000,6 +3092,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showCalendar(BuildContext context) {
+    final s = context.read<LocaleProvider>().strings;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -3016,9 +3109,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Calendario de Eventos',
-                    style: TextStyle(
+                  Text(
+                    s.calendarOfEvents,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -3043,9 +3136,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               size: 64,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
-                              'No hay eventos próximos',
-                              style: TextStyle(
+                            Text(
+                              s.noUpcomingEvents,
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 16,
                               ),
@@ -3181,6 +3274,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _showEventDetails(BuildContext context) {
+    final s = context.read<LocaleProvider>().strings;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1D1F28),
@@ -3234,9 +3328,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Más Info',
-                      style: TextStyle(
+                    child: Text(
+                      s.moreInfo,
+                      style: const TextStyle(
                         color: Color(0xFFE74C3C),
                         fontWeight: FontWeight.bold,
                       ),
@@ -3254,9 +3348,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Inscribirse',
-                      style: TextStyle(
+                    child: Text(
+                      s.register,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -3274,6 +3368,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildDrawer(ThemeProvider themeProvider) {
     final isDarkMode = themeProvider.isDarkMode;
+    final localeProvider = context.watch<LocaleProvider>();
+    final s = localeProvider.strings;
     
     return Drawer(
       backgroundColor: isDarkMode ? const Color(0xFF040512) : const Color(0xFFF8F9FA),
@@ -3301,7 +3397,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 15),
                     Text(
-                      'Federación Deportiva',
+                      s.federationLine1,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black87,
                         fontSize: 16,
@@ -3309,7 +3405,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     Text(
-                      'Peruana de Atletismo',
+                      s.federationLine2,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black87,
                         fontSize: 20,
@@ -3330,170 +3426,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    // Opción de tema
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.black.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: isDarkMode 
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.08),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isDarkMode 
-                                  ? Colors.white.withOpacity(0.1)
-                                  : Colors.black.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Modo Oscuro',
-                                    style: TextStyle(
-                                      color: isDarkMode ? Colors.white : Colors.black87,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Cambiar apariencia de la app',
-                                    style: TextStyle(
-                                      color: isDarkMode 
-                                        ? Colors.white60
-                                        : Colors.black54,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: isDarkMode,
-                              onChanged: (value) {
-                                themeProvider.toggleTheme();
-                              },
-                              activeColor: const Color(0xFFE74C3C),
-                              inactiveThumbColor: isDarkMode ? Colors.white70 : Colors.black54,
-                              inactiveTrackColor: isDarkMode 
-                                ? Colors.white.withOpacity(0.3)
-                                : Colors.black.withOpacity(0.3),
-                            ),
-                          ],
-                        ),
+                    // ── Modo oscuro ──────────────────────────────────────
+                    _buildDrawerTile(
+                      isDark: isDarkMode,
+                      icon: isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      title: s.darkMode,
+                      subtitle: s.changeAppearance,
+                      trailing: Switch(
+                        value: isDarkMode,
+                        onChanged: (_) => themeProvider.toggleTheme(),
+                        activeColor: const Color(0xFFE74C3C),
+                        inactiveThumbColor: isDarkMode ? Colors.white70 : Colors.black54,
+                        inactiveTrackColor: isDarkMode
+                            ? Colors.white.withOpacity(0.3)
+                            : Colors.black.withOpacity(0.3),
                       ),
                     ),
-                    
-                    // Opción de actualización
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _updateAvailable 
-                          ? const Color(0xFFFF6B35).withOpacity(0.1)
-                          : (isDarkMode 
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.03)),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: _updateAvailable 
-                            ? const Color(0xFFFF6B35).withOpacity(0.3)
-                            : (isDarkMode 
-                              ? Colors.white.withOpacity(0.1)
-                              : Colors.black.withOpacity(0.08)),
-                        ),
+
+                    // ── Idioma ───────────────────────────────────────────
+                    _buildDrawerTile(
+                      isDark: isDarkMode,
+                      icon: Icons.language,
+                      title: s.language,
+                      subtitle: localeProvider.isSpanish ? s.spanish : s.english,
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        color: isDarkMode ? Colors.white30 : Colors.black26,
+                        size: 16,
                       ),
-                      child: ListTile(
-                        leading: Stack(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isDarkMode 
-                                  ? Colors.white.withOpacity(0.1)
-                                  : Colors.black.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: _checkingUpdates 
-                                ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        isDarkMode ? Colors.white70 : Colors.black54,
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.system_update,
-                                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                                    size: 22,
-                                  ),
-                            ),
-                            if (_updateAvailable && !_checkingUpdates)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFF6B35),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        title: Text(
-                          'Actualizaciones',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _updateAvailable 
-                            ? 'Actualización disponible'
-                            : (_checkingUpdates 
-                              ? 'Verificando...' 
-                              : 'Verificar actualizaciones'),
-                          style: TextStyle(
-                            color: isDarkMode 
-                              ? Colors.white60
-                              : Colors.black54,
-                            fontSize: 13,
-                          ),
-                        ),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios,
-                          color: isDarkMode ? Colors.white30 : Colors.black26,
-                          size: 16,
-                        ),
-                        onTap: _handleUpdateButtonPressed,
+                      onTap: () => _showLanguageDialog(context, localeProvider, s),
+                    ),
+
+                    // ── Actualizaciones ──────────────────────────────────
+                    _buildDrawerTile(
+                      isDark: isDarkMode,
+                      icon: Icons.system_update,
+                      iconBadge: _updateAvailable && !_checkingUpdates,
+                      isLoading: _checkingUpdates,
+                      isHighlighted: _updateAvailable,
+                      title: s.updates,
+                      subtitle: _updateAvailable
+                          ? s.updateAvailable
+                          : (_checkingUpdates ? s.checking : s.checkUpdates),
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        color: isDarkMode ? Colors.white30 : Colors.black26,
+                        size: 16,
                       ),
+                      onTap: _handleUpdateButtonPressed,
                     ),
                     
                     const SizedBox(height: 10),
@@ -3502,68 +3482,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Container(
                       height: 1,
                       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      color: isDarkMode 
-                        ? Colors.white.withOpacity(0.1) 
-                        : Colors.black.withOpacity(0.1),
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.black.withOpacity(0.1),
                     ),
                     
-                    // Sobre la app
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDarkMode 
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.black.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: isDarkMode 
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.08),
-                        ),
+                    // ── Sobre la app ─────────────────────────────────────
+                    _buildDrawerTile(
+                      isDark: isDarkMode,
+                      icon: Icons.info_outline,
+                      title: s.about,
+                      subtitle: s.infoAndVersion,
+                      trailing: Icon(
+                        Icons.arrow_forward_ios,
+                        color: isDarkMode ? Colors.white30 : Colors.black26,
+                        size: 16,
                       ),
-                      child: ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isDarkMode 
-                              ? Colors.white.withOpacity(0.1)
-                              : Colors.black.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.info_outline,
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
-                            size: 22,
-                          ),
-                        ),
-                        title: Text(
-                          'Sobre la app',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Información y versión',
-                          style: TextStyle(
-                            color: isDarkMode 
-                              ? Colors.white60
-                              : Colors.black54,
-                            fontSize: 13,
-                          ),
-                        ),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios,
-                          color: isDarkMode ? Colors.white30 : Colors.black26,
-                          size: 16,
-                        ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showAboutDialog();
-                        },
-                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showAboutDialog();
+                      },
                     ),
                   ],
                 ),
@@ -3571,7 +3509,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           
-          // Footer con información de desarrollador y versión
+          // Footer
           SafeArea(
             top: false,
             child: Container(
@@ -3581,31 +3519,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   Text(
                     'Powered by: Ditxon Milan',
                     style: TextStyle(
-                      color: isDarkMode 
-                        ? Colors.white60
-                        : Colors.black54,
+                      color: isDarkMode ? Colors.white60 : Colors.black54,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Versión 1.6.5+165',
+                    '${s.versionLabel} $_appVersion',
                     style: TextStyle(
-                      color: isDarkMode 
-                        ? Colors.white.withOpacity(0.4)
-                        : Colors.black.withOpacity(0.38),
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.4)
+                          : Colors.black.withOpacity(0.38),
                       fontSize: 11,
                     ),
                   ),
-                  if (kBuildDate.isNotEmpty) ...[  
+                  if (kBuildDate.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
-                      'Build: $kBuildDate',
+                      '${s.buildLabel}: $kBuildDate',
                       style: TextStyle(
-                        color: isDarkMode 
-                          ? Colors.white.withOpacity(0.3)
-                          : Colors.black.withOpacity(0.28),
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.3)
+                            : Colors.black.withOpacity(0.28),
                         fontSize: 10,
                       ),
                     ),
@@ -3619,38 +3555,193 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Widget auxiliar para cada fila del drawer — evita repetición de código.
+  Widget _buildDrawerTile({
+    required bool isDark,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+    VoidCallback? onTap,
+    bool iconBadge = false,
+    bool isLoading = false,
+    bool isHighlighted = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isHighlighted
+            ? const Color(0xFFFF6B35).withOpacity(0.1)
+            : (isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.black.withOpacity(0.03)),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: isHighlighted
+              ? const Color(0xFFFF6B35).withOpacity(0.3)
+              : (isDark
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.black.withOpacity(0.08)),
+        ),
+      ),
+      child: ListTile(
+        leading: Stack(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isDark ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    )
+                  : Icon(icon,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      size: 22),
+            ),
+            if (iconBadge)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF6B35),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: isDark ? Colors.white60 : Colors.black54,
+            fontSize: 13,
+          ),
+        ),
+        trailing: trailing,
+        onTap: onTap,
+      ),
+    );
+  }
+
+  void _showLanguageDialog(
+      BuildContext ctx, LocaleProvider localeProvider, AppStrings s) {
+    Navigator.pop(ctx);
+    showDialog(
+      context: context,
+      builder: (context) {
+        final isDark = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1D1F28) : Colors.white,
+          title: Text(
+            s.languageDialogTitle,
+            style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87),
+          ),
+          content: Text(
+            s.languageDialogContent,
+            style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black54),
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Text('🇵🇪', style: TextStyle(fontSize: 18)),
+              label: Text(
+                s.spanish,
+                style: TextStyle(
+                  color: localeProvider.isSpanish
+                      ? const Color(0xFFE74C3C)
+                      : (isDark ? Colors.white60 : Colors.black54),
+                  fontWeight: localeProvider.isSpanish
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              onPressed: () {
+                localeProvider.setLocale(const Locale('es'));
+                Navigator.pop(context);
+              },
+            ),
+            TextButton.icon(
+              icon: const Text('🇺🇸', style: TextStyle(fontSize: 18)),
+              label: Text(
+                s.english,
+                style: TextStyle(
+                  color: !localeProvider.isSpanish
+                      ? const Color(0xFFE74C3C)
+                      : (isDark ? Colors.white60 : Colors.black54),
+                  fontWeight: !localeProvider.isSpanish
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              onPressed: () {
+                localeProvider.setLocale(const Locale('en'));
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showAboutDialog() {
+    final s = context.read<LocaleProvider>().strings;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Provider.of<ThemeProvider>(context).isDarkMode 
-          ? const Color(0xFF1D1F28) 
-          : Colors.white,
+        backgroundColor: Provider.of<ThemeProvider>(context).isDarkMode
+            ? const Color(0xFF1D1F28)
+            : Colors.white,
         title: Text(
-          'Sobre la aplicación',
+          s.aboutTitle,
           style: TextStyle(
-            color: Provider.of<ThemeProvider>(context).isDarkMode 
-              ? Colors.white 
-              : Colors.black87,
+            color: Provider.of<ThemeProvider>(context).isDarkMode
+                ? Colors.white
+                : Colors.black87,
           ),
         ),
         content: Text(
-          'FDPA App\nVersión 1.6.5+165${kBuildDate.isNotEmpty ? "  |  Build: $kBuildDate" : ""}\n\nAplicación oficial de la Federación Deportiva Peruana de Atletismo para consultar resultados, estadísticas y eventos.',
+          s.aboutContent(_appVersion, kBuildDate),
           style: TextStyle(
-            color: Provider.of<ThemeProvider>(context).isDarkMode 
-              ? Colors.white70 
-              : Colors.black54,
+            color: Provider.of<ThemeProvider>(context).isDarkMode
+                ? Colors.white70
+                : Colors.black54,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Cerrar',
+              s.close,
               style: TextStyle(
-                color: Provider.of<ThemeProvider>(context).isDarkMode 
-                  ? const Color(0xFFE74C3C) 
-                  : const Color(0xFFD32F2F),
+                color: Provider.of<ThemeProvider>(context).isDarkMode
+                    ? const Color(0xFFE74C3C)
+                    : const Color(0xFFD32F2F),
               ),
             ),
           ),

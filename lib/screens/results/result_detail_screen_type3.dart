@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import '../../models/result_type3.dart';
 import '../../services/event_service.dart';
@@ -50,6 +53,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
   final List<StreamSubscription<Map<String, dynamic>>> _socketSubs = [];
   Timer? _refreshDebounce;
 
+  AppStrings get s => context.read<LocaleProvider>().strings;
+
   @override
   void initState() {
     super.initState();
@@ -75,7 +80,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error al cargar los resultados: $e';
+        _errorMessage = s.errorLoadingResults(e.toString());
         _isLoading = false;
       });
     }
@@ -257,7 +262,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadResults,
-                child: const Text('Reintentar'),
+                child: Text(s.retry),
               ),
             ],
           ),
@@ -423,12 +428,12 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
+                  s.federationLine1,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -437,7 +442,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
+                  s.federationLine2,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -461,7 +466,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Resultados de la Prueba',
+            s.eventResults,
             style: TextStyle(
               color: Colors.white,
               fontSize: MediaQuery.of(context).size.width < 360 ? 14 : (MediaQuery.of(context).size.width < 400 ? 16 : 20),
@@ -610,8 +615,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               size: 24,
             ),
             const SizedBox(width: 15),
-            const Text(
-              'Buscar atleta',
+            Text(
+              s.enterNameSurname,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -648,8 +653,8 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                 size: 48,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No hay resultados disponibles',
+              Text(
+              s.noResultsAvailable,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -659,7 +664,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
               ),
               const SizedBox(height: 8),
               Text(
-                'Los resultados de esta prueba aún no han sido registrados',
+                s.resultsNotRegistered,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.6),
                   fontSize: 14,
@@ -734,7 +739,11 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
 
   Widget _buildAthleteCard(HeightAthleteResult athlete) {
     final int position = athlete.position ?? 0;
+    final bool isNoPosition = int.tryParse(athlete.positionText.replaceAll('°', '')) == null
+        && athlete.positionText != '--';
+
     Color getPositionColor() {
+      if (isNoPosition) return Colors.grey.withOpacity(0.4);
       switch (position) {
         case 1: return const Color(0xFF2ED573);
         case 2: return Colors.white.withOpacity(0.6);
@@ -744,6 +753,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
     }
 
     Color getBackgroundColor() {
+      if (isNoPosition) return Colors.white.withOpacity(0.03);
       switch (position) {
         case 1: return const Color(0xFF2ED573).withOpacity(0.15);
         case 2: return const Color(0xFF6C757D).withOpacity(0.15);
@@ -753,6 +763,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
     }
 
     Color getBorderColor() {
+      if (isNoPosition) return Colors.white.withOpacity(0.06);
       switch (position) {
         case 1: return const Color(0xFF2ED573).withOpacity(0.3);
         case 2: return const Color(0xFF6C757D).withOpacity(0.3);
@@ -778,7 +789,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 20,
             child: Container(
-              height: 64,
+              height: 90,
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
               decoration: BoxDecoration(
                 color: getPositionColor(),
@@ -793,30 +804,32 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      athlete.position != null
-                          ? 'Puesto ${athlete.position}°'
-                          : (athlete.athleteStatus ?? '--'),
-                      style: const TextStyle(
+                      isNoPosition
+                          ? athlete.positionText
+                          : (athlete.positionText != '--' ? 'Puesto ${athlete.positionText.replaceAll("°", "")}°' : '--'),
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
+                        fontSize: isNoPosition ? 13 : 9,
+                        fontWeight: isNoPosition ? FontWeight.w800 : FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      athlete.bestMark ?? athlete.bestHeight ?? '--',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                  if (!isNoPosition) ...[
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        athlete.bestMark ?? athlete.bestHeight ?? '--',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -825,7 +838,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 65,
             child: Container(
-              height: 64,
+              height: 90,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -833,25 +846,27 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                 children: [
                   Text(
                     athlete.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isNoPosition ? Colors.white54 : Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: athlete.attempts
-                            .map((attempt) => _buildAttemptBadge(attempt))
-                            .toList(),
+                  if (!isNoPosition) ...[
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: athlete.attempts
+                              .map((attempt) => _buildAttemptBadge(attempt))
+                              .toList(),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -860,7 +875,7 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
           Expanded(
             flex: 15,
             child: Container(
-              height: 64,
+              height: 90,
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.08),

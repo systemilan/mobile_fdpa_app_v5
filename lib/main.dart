@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/update_service.dart';
 import 'services/socket_service.dart';
 import 'providers/theme_provider.dart';
+import 'providers/locale_provider.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Edge-to-edge: Flutter reporta correctamente los insets de la barra de
-  // navegación (viewPadding.bottom > 0), el Scaffold los consume y el
-  // contenido nunca queda detrás de la barra. Necesario con targetSdk ≥ 35.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  runApp(MyApp());
+
+  // Detectar idioma del sistema y cargar preferencia guardada
+  final systemLocale = WidgetsBinding.instance.platformDispatcher.locale;
+  final savedLocale = await LocaleProvider.loadSavedLocale(systemLocale);
+
+  runApp(MyApp(initialLocale: savedLocale));
 }
 
 class MyApp extends StatefulWidget {
+  final Locale initialLocale;
+  const MyApp({super.key, required this.initialLocale});
+
   @override
   _MyAppState createState() => _MyAppState();
 }
@@ -25,9 +32,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Conectar Socket.IO para actualizaciones en tiempo real
     SocketService().connect();
-    // Verificar actualizaciones al iniciar la app
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService().checkForUpdatesOnStartup(context);
     });
@@ -41,15 +46,26 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LocaleProvider(widget.initialLocale)),
+      ],
+      child: Consumer2<ThemeProvider, LocaleProvider>(
+        builder: (context, themeProvider, localeProvider, child) {
           return MaterialApp(
-            title: 'FDPA Atletismo',
+            title: localeProvider.strings.appTitle,
             debugShowCheckedModeBanner: false,
             theme: themeProvider.currentTheme,
-            // Fijar escala de texto a 1.0 para toda la app — consistencia entre dispositivos
+            // Idioma activo
+            locale: localeProvider.locale,
+            supportedLocales: const [Locale('es'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            // Fijar escala de texto a 1.0 para toda la app
             builder: (context, child) {
               return MediaQuery(
                 data: MediaQuery.of(context).copyWith(

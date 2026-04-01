@@ -110,7 +110,7 @@ class _AthleteSearchSheetState extends State<AthleteSearchSheet> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Ingresa el apellido del atleta',
+            'Escriba nombre o apellido (en cualquier orden)',
             style: TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
@@ -126,7 +126,7 @@ class _AthleteSearchSheetState extends State<AthleteSearchSheet> {
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => _search(),
                   decoration: InputDecoration(
-                    hintText: 'Ej: CHAVEZ',
+                    hintText: 'Escriba el nombre o apellido',
                     hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.07),
@@ -202,7 +202,7 @@ class _AthleteSearchSheetState extends State<AthleteSearchSheet> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Intenta con el apellido completo',
+                      'Intenta con nombre y apellido en cualquier orden',
                       style: TextStyle(color: Colors.white38, fontSize: 13),
                     ),
                   ],

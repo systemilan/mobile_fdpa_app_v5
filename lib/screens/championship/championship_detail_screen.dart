@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../results/result_detail_screen_type1.dart';
 import '../results/result_detail_screen_type2.dart';
 import '../results/result_detail_screen_type3.dart';
@@ -7,6 +8,8 @@ import '../../services/event_service.dart';
 import '../../services/socket_service.dart';
 import '../../models/jornada.dart';
 import '../../config/environment.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import 'athlete_search_sheet.dart';
 
 /// Agrupación de ScheduledTests que comparten la misma prueba (test.id)
@@ -74,6 +77,8 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
   late Animation<Offset> _searchSlideAnimation;
   late Animation<double> _jornadasFadeAnimation;
   late Animation<Offset> _jornadasSlideAnimation;
+
+  AppStrings get s => context.read<LocaleProvider>().strings;
 
   @override
   void initState() {
@@ -404,20 +409,20 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Federación Deportiva',
-                  style: TextStyle(
+                  s.federationLine1,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
-                  style: TextStyle(
+                  s.federationLine2,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
@@ -536,9 +541,9 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
               size: 24,
             ),
             const SizedBox(width: 15),
-            const Text(
-              'Buscar atleta',
-              style: TextStyle(
+            Text(
+              s.enterNameSurname,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -569,7 +574,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
         child: Padding(
           padding: const EdgeInsets.all(32.0),
           child: Text(
-            'No hay jornadas disponibles',
+            s.noSessionsAvailable,
             style: TextStyle(
               color: Colors.white.withOpacity(0.6),
               fontSize: 16,
@@ -1511,9 +1516,9 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Lista de eventos y horarios para esta jornada.',
-                style: TextStyle(
+              Text(
+                s.sessionSchedule,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
                 ),
@@ -1530,9 +1535,9 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Ver Detalles Completos',
-                    style: TextStyle(
+                  child: Text(
+                    s.viewFullDetails,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import '../../models/minimum_mark.dart';
 import '../../services/minimum_mark_service.dart';
 import 'minimum_mark_download_button.dart';
@@ -27,6 +30,8 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
   MinimumMarkDetail? _detail;
   bool _isLoading = true;
   String? _errorMessage;
+
+  AppStrings get s => context.read<LocaleProvider>().strings;
 
   @override
   void initState() {
@@ -63,7 +68,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error al cargar datos: $e';
+          _errorMessage = s.errorLoadingData(e.toString());
         });
       }
     }
@@ -225,13 +230,13 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Federación Deportiva',
-                      style: TextStyle(
+                      s.federationLine1,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -239,8 +244,8 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
                       ),
                     ),
                     Text(
-                      'Peruana de Atletismo',
-                      style: TextStyle(
+                      s.federationLine2,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w400,
@@ -302,7 +307,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
     if (detail.marks.isEmpty) {
       return Center(
         child: Text(
-          'No hay marcas registradas',
+          s.noMarksRegistered,
           style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
         ),
       );
@@ -319,7 +324,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
               Expanded(
                 flex: 5,
                 child: Text(
-                  'Prueba',
+                  s.event,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
                     fontSize: 12,
@@ -331,7 +336,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
               Expanded(
                 flex: 2,
                 child: Text(
-                  'Varones',
+                  s.men,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
@@ -344,7 +349,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
               Expanded(
                 flex: 2,
                 child: Text(
-                  'Damas',
+                  s.women,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
@@ -444,7 +449,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
           const Icon(Icons.error_outline, color: Color(0xFFE74C3C), size: 48),
           const SizedBox(height: 12),
           Text(
-            _errorMessage ?? 'Error desconocido',
+            _errorMessage ?? s.unknownError,
             style:
                 TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
             textAlign: TextAlign.center,
@@ -454,7 +459,7 @@ class _MinimumMarkDetailScreenState extends State<MinimumMarkDetailScreen>
             onPressed: _loadData,
             style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE74C3C)),
-            child: const Text('Reintentar'),
+            child: Text(s.retry),
           ),
         ],
       ),

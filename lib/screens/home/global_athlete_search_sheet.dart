@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/athlete_search.dart';
+import '../../providers/locale_provider.dart';
 import '../../services/event_service.dart';
 
 class GlobalAthleteSearchSheet extends StatefulWidget {
@@ -16,6 +19,10 @@ class GlobalAthleteSearchSheet extends StatefulWidget {
 }
 
 class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
+  static const String _periodAll = 'all';
+  static const String _periodCurrentYear = 'current-year';
+  static const String _periodCustomYear = 'custom-year';
+
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -23,6 +30,49 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
   bool _isLoading = false;
   bool _hasSearched = false;
   String _error = '';
+  String _selectedPeriod = _periodAll;
+  String? _selectedYear;
+
+  int _extractEventYear(AthleteSearchResult item) {
+    final date = item.event?.dateStart ?? item.event?.dateEnd ?? '';
+    if (date.isEmpty) return 0;
+    try {
+      return DateTime.parse(date).year;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  List<String> get _availableYears {
+    final years = _results
+        .map(_extractEventYear)
+        .where((y) => y > 0)
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return years.map((y) => '$y').toList();
+  }
+
+  List<AthleteSearchResult> get _filteredResults {
+    if (_selectedPeriod == _periodAll) {
+      return _results;
+    }
+
+    final currentYear = DateTime.now().year;
+    if (_selectedPeriod == _periodCurrentYear) {
+      return _results.where((r) => _extractEventYear(r) == currentYear).toList();
+    }
+
+    if (_selectedPeriod == _periodCustomYear && _selectedYear != null) {
+      final selected = int.tryParse(_selectedYear!);
+      if (selected != null) {
+        return _results.where((r) => _extractEventYear(r) == selected).toList();
+      }
+    }
+
+    return _results;
+  }
 
   @override
   void initState() {
@@ -43,6 +93,7 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
     final query = _controller.text.trim();
     if (query.length < 2) return;
 
+    final s = context.read<LocaleProvider>().strings;
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -57,15 +108,28 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
         limit: 100,
       );
       if (mounted) {
+        final years = response.data
+            .map(_extractEventYear)
+            .where((y) => y > 0)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+
+        final currentYear = DateTime.now().year;
+        final defaultYear = years.contains(currentYear)
+            ? '$currentYear'
+            : (years.isNotEmpty ? '${years.first}' : null);
+
         setState(() {
           _results = response.data;
+          _selectedYear = _selectedYear ?? defaultYear;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Error al buscar. Verifica tu conexión e intenta de nuevo.';
+          _error = s.searchError;
           _isLoading = false;
         });
       }
@@ -98,6 +162,7 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
   }
 
   Widget _buildHeader(double bottomPadding) {
+    final s = context.read<LocaleProvider>().strings;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
@@ -128,9 +193,9 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
               const Icon(Icons.person_search,
                   color: Color(0xFFE74C3C), size: 22),
               const SizedBox(width: 10),
-              const Text(
-                'Buscar atleta',
-                style: TextStyle(
+              Text(
+                s.searchAthleteTitle,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -152,9 +217,9 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Busca en todos los eventos disponibles',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+          Text(
+            s.searchAllEventsHint,
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
           const SizedBox(height: 16),
 
@@ -171,7 +236,7 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                   textCapitalization: TextCapitalization.words,
                   onSubmitted: (_) => _search(),
                   decoration: InputDecoration(
-                    hintText: 'Ej: GARCIA, CHAVEZ...',
+                    hintText: s.enterNameSurname,
                     hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.07),
@@ -232,17 +297,124 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
           if (_hasSearched && !_isLoading && _results.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              '${_results.length} resultado${_results.length != 1 ? 's' : ''} encontrados',
+              s.resultsCount(_filteredResults.length),
               style: const TextStyle(
                   color: Colors.white54, fontSize: 13),
             ),
+            const SizedBox(height: 10),
+            _buildPeriodFilters(),
           ],
         ],
       ),
     );
   }
 
+  Widget _buildPeriodFilters() {
+    final s = context.read<LocaleProvider>().strings;
+    Widget chip({
+      required String label,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE74C3C) : Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? const Color(0xFFE74C3C) : Colors.white.withOpacity(0.18),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              chip(
+                label: s.all,
+                selected: _selectedPeriod == _periodAll,
+                onTap: () => setState(() => _selectedPeriod = _periodAll),
+              ),
+              chip(
+                label: s.currentYear,
+                selected: _selectedPeriod == _periodCurrentYear,
+                onTap: () => setState(() => _selectedPeriod = _periodCurrentYear),
+              ),
+              chip(
+                label: s.byYear,
+                selected: _selectedPeriod == _periodCustomYear,
+                onTap: () {
+                  setState(() {
+                    _selectedPeriod = _periodCustomYear;
+                    _selectedYear ??= _availableYears.isNotEmpty ? _availableYears.first : null;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        if (_selectedPeriod == _periodCustomYear && _availableYears.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _availableYears.map((year) {
+                final selected = _selectedYear == year;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedYear = year),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFFE74C3C).withOpacity(0.22)
+                          : Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? const Color(0xFFE74C3C)
+                            : Colors.white.withOpacity(0.16),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      year,
+                      style: TextStyle(
+                        color: selected ? const Color(0xFFE74C3C) : Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildBody() {
+    final s = context.read<LocaleProvider>().strings;
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -278,8 +450,8 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                     border: Border.all(
                         color: const Color(0xFFE74C3C).withOpacity(0.3)),
                   ),
-                  child: const Text('Reintentar',
-                      style: TextStyle(
+                  child: Text(s.retry,
+                      style: const TextStyle(
                           color: Color(0xFFE74C3C),
                           fontWeight: FontWeight.w600)),
                 ),
@@ -300,17 +472,17 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
               Icon(Icons.search,
                   color: Colors.white.withOpacity(0.1), size: 72),
               const SizedBox(height: 16),
-              const Text(
-                'Ingresa el apellido del atleta',
+              Text(
+                s.writeNameOrSurname,
                 style:
-                    TextStyle(color: Colors.white38, fontSize: 15),
+                    const TextStyle(color: Colors.white38, fontSize: 15),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Se buscará en todos los eventos registrados',
+              Text(
+                s.searchAllEventsInfo,
                 style:
-                    TextStyle(color: Colors.white24, fontSize: 13),
+                    const TextStyle(color: Colors.white24, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -329,18 +501,42 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
               const Icon(Icons.person_off,
                   color: Colors.white24, size: 56),
               const SizedBox(height: 16),
-              const Text(
-                'No se encontraron resultados',
-                style: TextStyle(
+              Text(
+                s.noResultsFound,
+                style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 16,
                     fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Intenta con el apellido completo o en mayúsculas',
+              Text(
+                s.youCanType,
                 style:
-                    TextStyle(color: Colors.white38, fontSize: 13),
+                    const TextStyle(color: Colors.white38, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_filteredResults.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.filter_alt_off, color: Colors.white24, size: 56),
+              const SizedBox(height: 16),
+              Text(
+                s.noResultsForFilter,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -351,15 +547,16 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      itemCount: _results.length,
+      itemCount: _filteredResults.length,
       itemBuilder: (context, index) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _buildResultCard(_results[index]),
+        child: _buildResultCard(_filteredResults[index]),
       ),
     );
   }
 
   Widget _buildResultCard(AthleteSearchResult item) {
+    final s = context.read<LocaleProvider>().strings;
     final result = item.result;
     final isFirst = result.position == 1;
     final Color accentColor =
@@ -502,7 +699,7 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                           ],
                           Text(
                             result.position != null
-                                ? 'Puesto ${result.position}'
+                                ? s.positionLabel(result.position!)
                                 : '--',
                             style: TextStyle(
                               color: accentColor,
@@ -525,7 +722,7 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                     if (result.lane != null) ...[
                       const Spacer(),
                       Text(
-                        'Carril ${result.lane}',
+                        s.laneLabel(result.lane!),
                         style: const TextStyle(
                             color: Colors.white38, fontSize: 12),
                       ),

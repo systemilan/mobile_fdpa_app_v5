@@ -1,6 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 import '../home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -138,6 +141,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = context.read<LocaleProvider>().strings;
     final size = MediaQuery.of(context).size;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -280,9 +284,9 @@ class _SplashScreenState extends State<SplashScreen>
                         position: _subtitleSlide,
                         child: FadeTransition(
                           opacity: _subtitleFade,
-                          child: const Text(
-                            'FEDERACIÓN PERUANA',
-                            style: TextStyle(
+                          child: Text(
+                            s.splashLine1,
+                            style: const TextStyle(
                               color: Color(0xFFE74C3C),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -298,9 +302,9 @@ class _SplashScreenState extends State<SplashScreen>
                         position: _subtitleSlide,
                         child: FadeTransition(
                           opacity: _subtitleFade,
-                          child: const Text(
-                            'DE ATLETISMO',
-                            style: TextStyle(
+                          child: Text(
+                            s.splashLine2,
+                            style: const TextStyle(
                               color: Color(0xFFE74C3C),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,

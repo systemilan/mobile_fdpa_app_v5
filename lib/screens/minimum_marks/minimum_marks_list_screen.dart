@@ -3,6 +3,9 @@ import '../../models/minimum_mark.dart';
 import '../../services/minimum_mark_service.dart';
 import 'minimum_mark_detail_screen.dart';
 import 'minimum_mark_download_button.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 
 class MinimumMarksListScreen extends StatefulWidget {
   const MinimumMarksListScreen({super.key});
@@ -42,6 +45,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Future<void> _loadData() async {
+    final s = context.read<LocaleProvider>().strings;
     try {
       setState(() {
         _isLoading = true;
@@ -59,7 +63,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error al cargar datos: $e';
+          _errorMessage = s.errorLoadingData(e.toString());
         });
       }
     }
@@ -161,6 +165,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Widget _buildHeader() {
+    final s = context.read<LocaleProvider>().strings;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -198,13 +203,13 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
-                  style: TextStyle(
+                  s.federationLine1,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -212,8 +217,8 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
-                  style: TextStyle(
+                  s.federationLine2,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w400,
@@ -229,11 +234,12 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Widget _buildTitleSection() {
-    return const Align(
+    final s = context.read<LocaleProvider>().strings;
+    return Align(
       alignment: Alignment.centerLeft,
       child: Text(
-        'Marcas Mínimas',
-        style: TextStyle(
+        s.minimumMarks,
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 24,
           fontWeight: FontWeight.w800,
@@ -245,6 +251,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Widget _buildCard(MinimumMarkSet set) {
+    final s = context.read<LocaleProvider>().strings;
     final dateRange = _formatDateRange(set.dateStart, set.dateEnd);
     final hasFile = set.fileUrl != null && set.fileUrl!.isNotEmpty;
     final isPdf = set.fileType == 'pdf';
@@ -330,9 +337,9 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
                       color: const Color(0xFFE74C3C).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Ver marcas →',
-                      style: TextStyle(
+                    child: Text(
+                      s.viewMarks,
+                      style: const TextStyle(
                         color: Color(0xFFE74C3C),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -354,6 +361,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Widget _buildError() {
+    final s = context.read<LocaleProvider>().strings;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -361,7 +369,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
           const Icon(Icons.error_outline, color: Color(0xFFE74C3C), size: 48),
           const SizedBox(height: 12),
           Text(
-            _errorMessage ?? 'Error desconocido',
+            _errorMessage ?? s.unknownError,
             style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
             textAlign: TextAlign.center,
           ),
@@ -369,7 +377,7 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
           ElevatedButton(
             onPressed: _loadData,
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE74C3C)),
-            child: const Text('Reintentar'),
+            child: Text(s.retry),
           ),
         ],
       ),
@@ -377,9 +385,10 @@ class _MinimumMarksListScreenState extends State<MinimumMarksListScreen>
   }
 
   Widget _buildEmpty() {
+    final s = context.read<LocaleProvider>().strings;
     return Center(
       child: Text(
-        'No hay marcas mínimas disponibles',
+        s.noMinimumMarksAvailable,
         style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
       ),
     );

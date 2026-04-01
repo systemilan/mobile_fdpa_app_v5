@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import '../../config/environment.dart';
 import '../../services/national_record_service.dart';
 import '../../models/national_record.dart';
+import 'package:provider/provider.dart';
+import '../../l10n/app_strings.dart';
+import '../../providers/locale_provider.dart';
 
 class RecordsScreen extends StatefulWidget {
   final bool? initialIsMinimumMarks;
@@ -47,11 +50,14 @@ class _RecordsScreenState extends State<RecordsScreen>
   String? _errorMessage;
   NationalRecordStatistics? _statistics;
   
-  final List<String> _types = ['Records Nacionales', 'Marcas Mínimas'];
+  List<String> get _typeLabels => [
+    context.read<LocaleProvider>().strings.nationalRecords,
+    context.read<LocaleProvider>().strings.minimumMarks,
+  ];
 
   // Fechas de actualización desde la API
-  String _nationalRecordsDate = 'Cargando...';
-  String _minimumMarksDate = 'Cargando...';
+  String _nationalRecordsDate = '';
+  String _minimumMarksDate = '';
 
   @override
   void initState() {
@@ -158,6 +164,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Future<void> _loadUpdateDates() async {
+    final s = context.read<LocaleProvider>().strings;
     try {
       final url = Uri.parse('${Environment.publicBaseUrl}/app/update-dates');
       final response = await http.get(url).timeout(Environment.connectTimeout);
@@ -166,8 +173,8 @@ class _RecordsScreenState extends State<RecordsScreen>
         final data = json['data'];
         if (mounted) {
           setState(() {
-            _nationalRecordsDate = _formatDate(data['nationalRecords']?['lastUpdated']);
-            _minimumMarksDate = _formatDate(data['minimumMarks']?['lastUpdated']);
+            _nationalRecordsDate = _formatDate(data['nationalRecords']?['lastUpdated'], updatedLabel: s.updated);
+            _minimumMarksDate = _formatDate(data['minimumMarks']?['lastUpdated'], updatedLabel: s.updated);
           });
         }
       }
@@ -176,11 +183,11 @@ class _RecordsScreenState extends State<RecordsScreen>
     }
   }
 
-  String _formatDate(String? isoDate) {
+  String _formatDate(String? isoDate, {String updatedLabel = 'Act.'}) {
     if (isoDate == null) return '--';
     try {
       final dt = DateTime.parse(isoDate).toLocal();
-      return 'Act. ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      return '$updatedLabel ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
     } catch (_) {
       return '--';
     }
@@ -188,6 +195,7 @@ class _RecordsScreenState extends State<RecordsScreen>
 
   /// Cargar categorías y estadísticas
   Future<void> _loadData() async {
+    final s = context.read<LocaleProvider>().strings;
     try {
       setState(() {
         _isLoading = true;
@@ -218,7 +226,7 @@ class _RecordsScreenState extends State<RecordsScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error al cargar datos: $e';
+          _errorMessage = s.errorLoadingData(e.toString());
         });
       }
     }
@@ -226,6 +234,7 @@ class _RecordsScreenState extends State<RecordsScreen>
 
   /// Cargar récords por categoría
   Future<void> _loadRecordsByCategory(String category) async {
+    final s = context.read<LocaleProvider>().strings;
     try {
       setState(() {
         _isLoading = true;
@@ -244,7 +253,7 @@ class _RecordsScreenState extends State<RecordsScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error al cargar récords: $e';
+          _errorMessage = s.errorLoadingRecords(e.toString());
         });
       }
     }
@@ -252,6 +261,7 @@ class _RecordsScreenState extends State<RecordsScreen>
 
   /// Buscar por atleta
   Future<void> _searchByAthlete(String name) async {
+    final s = context.read<LocaleProvider>().strings;
     if (name.isEmpty) {
       // Si está vacío, cargar récords de la categoría actual
       if (_categories.isNotEmpty) {
@@ -278,7 +288,7 @@ class _RecordsScreenState extends State<RecordsScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error en la búsqueda: $e';
+          _errorMessage = s.errorInSearch(e.toString());
         });
       }
     }
@@ -286,14 +296,15 @@ class _RecordsScreenState extends State<RecordsScreen>
 
   /// Descargar PDF de récords nacionales
   Future<void> _downloadPdf() async {
+    final s = context.read<LocaleProvider>().strings;
     try {
       // Mostrar indicador de carga
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -301,11 +312,11 @@ class _RecordsScreenState extends State<RecordsScreen>
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
-                SizedBox(width: 16),
-                Text('Descargando PDF...'),
+                const SizedBox(width: 16),
+                Text(s.downloadingPdf),
               ],
             ),
-            duration: Duration(seconds: 30),
+            duration: const Duration(seconds: 30),
           ),
         );
       }
@@ -319,11 +330,11 @@ class _RecordsScreenState extends State<RecordsScreen>
         // Mostrar mensaje de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('PDF descargado exitosamente en: $filePath'),
+            content: Text(s.pdfDownloaded(filePath)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'OK',
+              label: s.ok,
               textColor: Colors.white,
               onPressed: () {
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -340,7 +351,7 @@ class _RecordsScreenState extends State<RecordsScreen>
         // Mostrar mensaje de error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al descargar PDF: $e'),
+            content: Text(s.errorDownloadPdf(e.toString())),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -465,6 +476,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Widget _buildHeader() {
+    final s = context.read<LocaleProvider>().strings;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -519,13 +531,13 @@ class _RecordsScreenState extends State<RecordsScreen>
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Federación Deportiva',
-                  style: TextStyle(
+                  s.federationLine1,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -533,8 +545,8 @@ class _RecordsScreenState extends State<RecordsScreen>
                   ),
                 ),
                 Text(
-                  'Peruana de Atletismo',
-                  style: TextStyle(
+                  s.federationLine2,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w400,
@@ -550,13 +562,15 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Widget _buildTitleSection() {
+    final s = context.read<LocaleProvider>().strings;
     // Obtener nombre de categoría actual
     final currentCategory = _categories.isNotEmpty 
         ? _categories[_selectedCategoryIndex] 
-        : 'Cargando...';
+        : s.loading;
 
     // Obtener fecha de última actualización desde update-dates API
-    final lastUpdateText = _selectedTypeIndex == 0 ? _nationalRecordsDate : _minimumMarksDate;
+    final rawDate = _selectedTypeIndex == 0 ? _nationalRecordsDate : _minimumMarksDate;
+    final lastUpdateText = rawDate.isEmpty ? s.loading : rawDate;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,7 +579,7 @@ class _RecordsScreenState extends State<RecordsScreen>
         Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            '${_types[_selectedTypeIndex]} - $currentCategory',
+            '${_typeLabels[_selectedTypeIndex]} - $currentCategory',
             style: TextStyle(
               color: Colors.white,
               fontSize: MediaQuery.of(context).size.width < 400 ? 14 : 16,
@@ -597,6 +611,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Widget _buildActionBar() {
+    final s = context.read<LocaleProvider>().strings;
     return Row(
       children: [
         // Buscador
@@ -626,9 +641,9 @@ class _RecordsScreenState extends State<RecordsScreen>
                       color: Colors.white,
                       fontSize: 14,
                     ),
-                    decoration: const InputDecoration(
-                      hintText: 'Buscar atleta',
-                      hintStyle: TextStyle(
+                    decoration: InputDecoration(
+                      hintText: s.enterNameSurname,
+                      hintStyle: const TextStyle(
                         color: Colors.white54,
                         fontSize: 14,
                       ),
@@ -669,16 +684,16 @@ class _RecordsScreenState extends State<RecordsScreen>
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     Icons.download,
                     color: Colors.white,
                     size: 16,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    'PDF',
-                    style: TextStyle(
+                    s.pdf,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -715,14 +730,22 @@ class _RecordsScreenState extends State<RecordsScreen>
             },
             child: Container(
               margin: EdgeInsets.only(right: index < _categories.length - 1 ? 10 : 0),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: isSelected ? const Color(0xFFE74C3C) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFFE74C3C)
+                      : const Color(0xFFE74C3C).withOpacity(0.22),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
+                    color: isSelected
+                        ? const Color(0xFFE74C3C).withOpacity(0.28)
+                        : Colors.black.withOpacity(0.08),
+                    blurRadius: isSelected ? 8 : 4,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -732,9 +755,9 @@ class _RecordsScreenState extends State<RecordsScreen>
                   category,
                   style: TextStyle(
                     color: isSelected 
-                      ? const Color(0xFFC0392B)
+                      ? Colors.white
                       : const Color(0xFFE74C3C),
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -747,6 +770,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Widget _buildRecordsSection() {
+    final s = context.read<LocaleProvider>().strings;
     // Mostrar indicador de carga
     if (_isLoading) {
       return Container(
@@ -787,7 +811,7 @@ class _RecordsScreenState extends State<RecordsScreen>
                 backgroundColor: const Color(0xFFE74C3C),
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Reintentar'),
+              child: Text(s.retry),
             ),
           ],
         ),
@@ -807,7 +831,7 @@ class _RecordsScreenState extends State<RecordsScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'No se encontraron registros',
+              s.noRecordsFound,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
                 fontSize: 18,
@@ -817,7 +841,7 @@ class _RecordsScreenState extends State<RecordsScreen>
             if (_searchQuery.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                'para "$_searchQuery"',
+                s.forQuery(_searchQuery),
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.4),
                   fontSize: 14,
@@ -847,6 +871,8 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   Widget _buildRecordCard(NationalRecord record, int index, int totalRecords) {
+    final bool isSearchMode = _searchQuery.trim().length >= 3;
+
     BorderRadius? borderRadius;
     if (totalRecords == 1) {
       borderRadius = BorderRadius.circular(12);
@@ -951,6 +977,31 @@ class _RecordsScreenState extends State<RecordsScreen>
 
             const SizedBox(height: 8),
 
+            if (isSearchMode) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.12),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  record.category,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+
             // ── Fila 2: Nombre(s) atleta — ancho completo, sin competir con la marca ──
             if (isRelay)
               Wrap(
@@ -1046,6 +1097,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   }
 
   void _showRecordDetails(NationalRecord record) {
+    final s = context.read<LocaleProvider>().strings;
     final formattedDate =
         '${record.recordDate.day.toString().padLeft(2, '0')}/'
         '${record.recordDate.month.toString().padLeft(2, '0')}/'
@@ -1144,7 +1196,7 @@ class _RecordsScreenState extends State<RecordsScreen>
               // ── Atleta(s) ──
               if (isRelay) ...[
                 Text(
-                  'EQUIPO',
+                  s.team,
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.35),
                     fontSize: 10,
@@ -1197,18 +1249,18 @@ class _RecordsScreenState extends State<RecordsScreen>
               // ── Datos en grid 2 columnas ──
               Row(
                 children: [
-                  Expanded(child: _buildDetailTile(Icons.bookmark_outline, 'Categoría', record.category)),
+                  Expanded(child: _buildDetailTile(Icons.bookmark_outline, s.category, record.category)),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildDetailTile(Icons.location_on_outlined, 'Lugar', record.place)),
+                  Expanded(child: _buildDetailTile(Icons.location_on_outlined, s.place, record.place)),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _buildDetailTile(Icons.calendar_today_outlined, 'Fecha', formattedDate)),
+                  Expanded(child: _buildDetailTile(Icons.calendar_today_outlined, s.date, formattedDate)),
                   if (record.coach.isNotEmpty) ...[
                     const SizedBox(width: 12),
-                    Expanded(child: _buildDetailTile(Icons.person_outline, 'Entrenador', record.coach)),
+                    Expanded(child: _buildDetailTile(Icons.person_outline, s.coach, record.coach)),
                   ] else
                     const Expanded(child: SizedBox()),
                 ],
@@ -1228,9 +1280,9 @@ class _RecordsScreenState extends State<RecordsScreen>
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: const Text(
-                    'Cerrar',
-                    style: TextStyle(
+                  child: Text(
+                    s.close,
+                    style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
