@@ -533,7 +533,8 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
             _buildColumnHeader(discipline),
             // Filas de atletas
             ...discipline.entries.asMap().entries.map((e) =>
-                _buildEntryRow(e.value, e.key, discipline.entries.length)),
+                _buildEntryRow(e.value, e.key, discipline.entries.length,
+                    discipline.entries.any((d) => d.wind != null))),
             const SizedBox(height: 6),
           ],
         ],
@@ -591,7 +592,7 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
         letterSpacing: 0.8,
       );
 
-  Widget _buildEntryRow(RankingEntry entry, int index, int total) {
+  Widget _buildEntryRow(RankingEntry entry, int index, int total, [bool hasWind = false]) {
     // Detectar si la disciplina padre tiene viento
     // (llamado desde _buildDisciplineSection que ya sabe la disciplina)
     final pos = entry.rankPosition;
@@ -707,12 +708,14 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
                       textAlign: TextAlign.right,
                     ),
                   ),
-                  // VIENTO (solo si tiene valor)
-                  if (entry.wind != null) ...[
+                  // VIENTO: siempre reservar espacio si la disciplina mide viento
+                  if (hasWind) ...[
                     const SizedBox(width: 6),
                     SizedBox(
                       width: 52,
-                      child: _buildWindBadge(entry.wind!),
+                      child: entry.wind != null
+                          ? _buildWindBadge(entry.wind!)
+                          : const SizedBox.shrink(),
                     ),
                   ],
                 ],

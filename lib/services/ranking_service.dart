@@ -119,4 +119,63 @@ class RankingService {
       rethrow;
     }
   }
+
+  /// Busca un atleta en todos los rankings publicados/archivados.
+  /// Parámetros opcionales: [year], [gender] ("M"|"F"), [category] ("U18"|"U20"|"MAYORES")
+  Future<List<RankingAthleteSearchResult>> searchAthletes(
+    String query, {
+    int? year,
+    String? gender,
+    String? category,
+    int limit = 100,
+  }) async {
+    try {
+      final params = <String, String>{'q': query, 'limit': '$limit'};
+      if (year != null) params['year'] = '$year';
+      if (gender != null) params['gender'] = gender;
+      if (category != null) params['category'] = category;
+
+      final url = Uri.parse('$_baseUrl/public/rankings/search-athlete')
+          .replace(queryParameters: params);
+
+      if (Environment.enableLogs) {
+        debugPrint('🔍 Searching athletes in rankings: $url');
+      }
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ).timeout(Environment.connectTimeout);
+
+      if (Environment.enableLogs) {
+        debugPrint('📊 Ranking search status: ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body) as Map<String, dynamic>;
+        if (jsonData['ok'] == true) {
+          final data = jsonData['data'] as List<dynamic>? ?? [];
+          final results = data
+              .map((e) => RankingAthleteSearchResult.fromJson(
+                  e as Map<String, dynamic>))
+              .toList();
+          if (Environment.enableLogs) {
+            debugPrint('✅ Found ${results.length} athlete entries in rankings');
+          }
+          return results;
+        }
+        return [];
+      } else {
+        throw Exception('Error ${response.statusCode}');
+      }
+    } catch (e) {
+      if (Environment.enableLogs) {
+        debugPrint('❌ Error searching athletes in rankings: $e');
+      }
+      rethrow;
+    }
+  }
 }

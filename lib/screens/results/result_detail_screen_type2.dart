@@ -828,6 +828,22 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                         maxLines: 1,
                       ),
                     ),
+                    if (athlete.combinedPoints != null) ...[  
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${athlete.combinedPoints} pts',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ] else ...[
                     FittedBox(
                       fit: BoxFit.scaleDown,

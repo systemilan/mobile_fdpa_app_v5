@@ -212,6 +212,111 @@ class RankingDiscipline {
   }
 }
 
+/// Resultado de búsqueda de atleta en rankings (endpoint /rankings/search-athlete)
+class RankingAthleteSearchResult {
+  final String rankingId;
+  final int year;
+  final String gender;
+  final String category;
+  final String label;
+  final String? lastEventDate;
+  final String id;
+  final String discipline;
+  final int rankPosition;
+  final String mark;
+  final String? wind;
+  final bool isWindAssisted;
+  final String athleteName;
+  final String? club;
+  final String? birthDate;
+  final String? competitionName;
+  final String? competitionDate;
+  final bool isManual;
+
+  const RankingAthleteSearchResult({
+    required this.rankingId,
+    required this.year,
+    required this.gender,
+    required this.category,
+    required this.label,
+    this.lastEventDate,
+    required this.id,
+    required this.discipline,
+    required this.rankPosition,
+    required this.mark,
+    this.wind,
+    required this.isWindAssisted,
+    required this.athleteName,
+    this.club,
+    this.birthDate,
+    this.competitionName,
+    this.competitionDate,
+    required this.isManual,
+  });
+
+  factory RankingAthleteSearchResult.fromJson(Map<String, dynamic> json) {
+    return RankingAthleteSearchResult(
+      rankingId: json['rankingId'] ?? '',
+      year: json['year'] is int
+          ? json['year']
+          : int.tryParse(json['year'].toString()) ?? 0,
+      gender: json['gender'] ?? 'M',
+      category: json['category'] ?? 'MAYORES',
+      label: json['label'] ?? '',
+      lastEventDate: json['lastEventDate']?.toString(),
+      id: json['id'] ?? '',
+      discipline: json['discipline'] ?? '',
+      rankPosition: json['rankPosition'] is int
+          ? json['rankPosition']
+          : int.tryParse(json['rankPosition'].toString()) ?? 0,
+      mark: json['mark']?.toString() ?? '',
+      wind: json['wind']?.toString(),
+      isWindAssisted: json['isWindAssisted'] == true,
+      athleteName: json['athleteName'] ?? '',
+      club: json['club']?.toString(),
+      birthDate: json['birthDate']?.toString(),
+      competitionName: json['competitionName']?.toString(),
+      competitionDate: json['competitionDate']?.toString(),
+      isManual: json['isManual'] == true,
+    );
+  }
+
+  /// Marca a mostrar: si tiene viento asistido agrega " w"
+  String get displayMark => isWindAssisted ? '$mark w' : mark;
+
+  String get genderLabel => gender == 'F' ? 'Damas' : 'Varones';
+
+  String get categoryLabel {
+    switch (category) {
+      case 'U18': return 'Sub 18';
+      case 'U20': return 'Sub 20';
+      case 'MAYORES': return 'Mayores';
+      default: return category;
+    }
+  }
+
+  String get athleteNameFormatted {
+    return athleteName.split(' ').map((w) {
+      if (w.isEmpty) return w;
+      return w[0].toUpperCase() + w.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
+  String? get formattedCompetitionDate {
+    if (competitionDate == null) return null;
+    try {
+      final dt = DateTime.parse('${competitionDate}T00:00:00');
+      const months = [
+        'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+        'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return competitionDate;
+    }
+  }
+}
+
 /// Detalle completo de un ranking (incluye disciplines)
 class RankingDetail extends RankingMaster {
   final List<RankingDiscipline> disciplines;

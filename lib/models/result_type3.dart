@@ -243,6 +243,7 @@ class HeightAthleteResult {
   final String? bestMark;
   final bool status;
   final String eventType;
+  final int? combinedPoints;
 
   HeightAthleteResult({
     this.displayOrder = 0,
@@ -261,6 +262,7 @@ class HeightAthleteResult {
     this.bestMark,
     required this.status,
     required this.eventType,
+    this.combinedPoints,
   });
 
   factory HeightAthleteResult.fromJson(Map<String, dynamic> json) {
@@ -313,6 +315,7 @@ class HeightAthleteResult {
       bestMark: _formatHeightMark(json['bestMark']),
       status: json['status'] ?? true,
       eventType: json['eventType'] ?? '',
+      combinedPoints: json['combinedPoints'] as int?,
     );
   }
 

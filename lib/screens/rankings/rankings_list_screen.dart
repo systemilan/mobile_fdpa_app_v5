@@ -5,6 +5,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/ranking.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/ranking_service.dart';
+import 'ranking_athlete_search_sheet.dart';
 import 'ranking_detail_screen.dart';
 
 class RankingsListScreen extends StatefulWidget {
@@ -229,8 +230,37 @@ class _RankingsListScreenState extends State<RankingsListScreen>
                         ),
                       ),
                     ),
-                    // Año selector inline — discreto
-                    if (_years.isNotEmpty) _buildYearSelector(),
+                    Row(
+                      children: [
+                        // Año selector inline — discreto
+                        if (_years.isNotEmpty) _buildYearSelector(),
+                        const SizedBox(width: 8),
+                        // Botón de búsqueda de atletas en rankings
+                        GestureDetector(
+                          onTap: () => showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => const RankingAthleteSearchSheet(),
+                          ),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.12)),
+                            ),
+                            child: const Icon(
+                              Icons.person_search,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),

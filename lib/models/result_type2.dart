@@ -18,6 +18,7 @@ class FieldAthleteResult {
   final double? bestMark;
   final bool status;
   final String eventType;
+  final int? combinedPoints;
 
   FieldAthleteResult({
     this.displayOrder = 0,
@@ -36,6 +37,7 @@ class FieldAthleteResult {
     this.bestMark,
     required this.status,
     required this.eventType,
+    this.combinedPoints,
   });
 
   factory FieldAthleteResult.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,7 @@ class FieldAthleteResult {
       bestMark: json['bestMark']?.toDouble(),
       status: json['status'] ?? false,
       eventType: json['eventType'] ?? '',
+      combinedPoints: json['combinedPoints'] as int?,
     );
   }
 

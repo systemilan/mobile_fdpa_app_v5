@@ -158,6 +158,15 @@ class AppStrings {
   String get rankingWind => _isEs ? 'Viento' : 'Wind';
   String get rankingNoData =>
       _isEs ? 'No hay datos disponibles' : 'No data available';
+  String get searchInRankings =>
+      _isEs ? 'Buscar en Rankings' : 'Search in Rankings';
+  String get searchAthleteInRankingsHint =>
+      _isEs ? 'Buscar atleta (ej: Vila…)' : 'Search athlete (e.g.: Smith…)';
+  String get noRankingAthleteResults =>
+      _isEs ? 'No se encontraron atletas en los rankings' : 'No athletes found in the rankings';
+  String rankingAthleteResultsCount(int n) => _isEs
+      ? '$n resultado${n != 1 ? 's' : ''} en rankings'
+      : '$n result${n != 1 ? 's' : ''} in rankings';
 
   // ─── All Results ──────────────────────────────────────────────────────────
   String get allResults => _isEs ? 'Todos los resultados' : 'All results';

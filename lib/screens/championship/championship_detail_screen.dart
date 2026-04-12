@@ -67,7 +67,10 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
   Map<String, dynamic>? _eventData;
   bool get _isHistoricalEvent => _eventData?['oldHistory'] == true;
   String get _eventId => _eventData?['id'] ?? widget.eventId ?? '';
-  
+
+  // Resúmenes de pruebas combinadas (decatlón, heptatlón, etc.)
+  List<CombinedSummary> _combinedSummaries = [];
+
   // Animaciones escalonadas para los elementos
   late Animation<double> _headerFadeAnimation;
   late Animation<Offset> _headerSlideAnimation;
@@ -225,12 +228,13 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
         setState(() {
           _jornadas = response.data.jornadas;
           _eventData = response.data.event; // Guardar datos del evento
+          _combinedSummaries = response.data.combinedSummaries;
           _isLoadingJornadas = false;
         });
         
         // Log información del evento para debugging
         if (Environment.enableLogs) {
-          print('📋 Event loaded: ${_eventData?['shortName']} (oldHistory: ${_eventData?['oldHistory']})');
+          print('📋 Event loaded: ${_eventData?['shortName']} (oldHistory: ${_eventData?['oldHistory']}, combinedSummaries: ${_combinedSummaries.length})');
         }
       }
     } catch (e) {
@@ -346,6 +350,12 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                       ),
                     ),
                   ),
+                  // ── Resúmenes de pruebas combinadas ──
+                  if (_combinedSummaries.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 24),
+                      child: _buildCombinedSummariesSection(),
+                    ),
                 ],
               ),
             ),
@@ -917,10 +927,10 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                                     ),
                                   ),
                                   Builder(builder: (_) {
-                                    final ceShortName = group.tests
-                                        .map((t) => _getCombinedEventShortName(t.combinedEvent))
+                                    final ceLongName = group.tests
+                                        .map((t) => _getCombinedEventLongName(t.combinedEvent))
                                         .firstWhere((s) => s != null, orElse: () => null);
-                                    if (ceShortName == null) return const SizedBox.shrink();
+                                    if (ceLongName == null) return const SizedBox.shrink();
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 6),
                                       child: Container(
@@ -934,7 +944,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                                           ),
                                         ),
                                         child: Text(
-                                          ceShortName,
+                                          ceLongName,
                                           style: const TextStyle(
                                             color: Color(0xFFFFB300),
                                             fontSize: 12,
@@ -1042,7 +1052,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
                           ),
                         ),
                         child: Text(
-                          _getCombinedEventShortName(test.combinedEvent) ?? '',
+                          _getCombinedEventLongName(test.combinedEvent) ?? '',
                           style: const TextStyle(
                             color: Color(0xFFFFB300),
                             fontSize: 11,
@@ -1395,6 +1405,316 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
       if (gender == 'F') return Colors.pink;
     }
     return Colors.purple; // Mixto
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Sección de resúmenes de pruebas combinadas (Decatlón / Heptatlón)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildCombinedSummariesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _combinedSummaries
+          .map((summary) => _buildOneCombinedSummary(summary))
+          .toList(),
+    );
+  }
+
+  Widget _buildOneCombinedSummary(CombinedSummary summary) {
+    const double posW = 34.0;
+    const double nameW = 162.0;
+    const double countryW = 46.0;
+    const double discW = 54.0;
+    const double totalW = 68.0;
+    const double rowH = 50.0;
+    const double headerH = 34.0;
+
+    Color medalColor(int pos) {
+      if (pos == 1) return const Color(0xFFFFD700);
+      if (pos == 2) return const Color(0xFFB0BEC5);
+      if (pos == 3) return const Color(0xFFCD7F32);
+      return Colors.white;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D1F28),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Título de sección ──
+          Container(
+            color: const Color(0xFF252836),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE74C3C),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'RESULTADOS ${summary.longName.toUpperCase()}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE74C3C).withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFFE74C3C).withOpacity(0.4),
+                    ),
+                  ),
+                  child: Text(
+                    summary.shortName,
+                    style: const TextStyle(
+                      color: Color(0xFFE74C3C),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ── Tabla scrollable horizontalmente ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cabecera
+                _buildCombinedTableHeader(
+                  summary,
+                  posW: posW,
+                  nameW: nameW,
+                  countryW: countryW,
+                  discW: discW,
+                  totalW: totalW,
+                  height: headerH,
+                ),
+                const Divider(color: Colors.white12, height: 1, thickness: 1),
+                // Filas de atletas
+                ...summary.athletes.map(
+                  (athlete) => _buildCombinedAthleteRow(
+                    athlete,
+                    summary.subTests,
+                    medalColor(athlete.finalPosition),
+                    posW: posW,
+                    nameW: nameW,
+                    countryW: countryW,
+                    discW: discW,
+                    totalW: totalW,
+                    height: rowH,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCombinedTableHeader(
+    CombinedSummary summary, {
+    required double posW,
+    required double nameW,
+    required double countryW,
+    required double discW,
+    required double totalW,
+    required double height,
+  }) {
+    const style = TextStyle(
+      color: Colors.white60,
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3,
+    );
+
+    Widget cell(String text, double w, {TextAlign align = TextAlign.center}) =>
+        SizedBox(
+          width: w,
+          height: height,
+          child: Center(
+            child: Text(text, style: style, textAlign: align),
+          ),
+        );
+
+    return Container(
+      color: const Color(0xFF1A1C24),
+      child: Row(
+        children: [
+          cell('#', posW),
+          SizedBox(
+            width: nameW,
+            height: height,
+            child: const Padding(
+              padding: EdgeInsets.only(left: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('ATLETA', style: style),
+              ),
+            ),
+          ),
+          cell('PAÍS', countryW),
+          ...summary.subTests.map(
+            (st) => cell(st.shortLabel, discW),
+          ),
+          cell('TOTAL', totalW),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCombinedAthleteRow(
+    CombinedAthlete athlete,
+    List<CombinedSubTest> subTests,
+    Color posColor, {
+    required double posW,
+    required double nameW,
+    required double countryW,
+    required double discW,
+    required double totalW,
+    required double height,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Posición
+          SizedBox(
+            width: posW,
+            height: height,
+            child: Center(
+              child: Text(
+                '${athlete.finalPosition}',
+                style: TextStyle(
+                  color: posColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          // Nombre
+          SizedBox(
+            width: nameW,
+            height: height,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    athlete.nameFormatted,
+                    style: TextStyle(
+                      color: posColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (athlete.team.isNotEmpty && athlete.team != athlete.country)
+                    Text(
+                      athlete.team,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // País
+          SizedBox(
+            width: countryW,
+            height: height,
+            child: Center(
+              child: Text(
+                athlete.country,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          // Celdas de disciplina
+          ...subTests.map((st) {
+            final result = athlete.subResults[st.eventTestId];
+            final hasPoints = result?.points != null;
+            final hasMark = result?.mark != null && result!.mark!.isNotEmpty;
+            return SizedBox(
+              width: discW,
+              height: height,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    hasPoints ? '${result!.points}' : '–',
+                    style: TextStyle(
+                      color: hasPoints ? Colors.white : Colors.white24,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    hasMark ? result!.mark! : '–',
+                    style: TextStyle(
+                      color: hasMark ? Colors.white38 : Colors.white12,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          // Total
+          SizedBox(
+            width: totalW,
+            height: height,
+            child: Center(
+              child: Text(
+                '${athlete.totalPoints}',
+                style: TextStyle(
+                  color: posColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEventoCard(Map<String, String> evento) {

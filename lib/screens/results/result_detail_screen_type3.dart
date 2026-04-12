@@ -829,6 +829,21 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                         textAlign: TextAlign.center,
                       ),
                     ),
+                    if (athlete.combinedPoints != null) ...[  
+                      const SizedBox(height: 3),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${athlete.combinedPoints} pts',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

@@ -239,6 +239,7 @@ class RaceAthleteResult {
   final String? bestMark;
   final bool status;
   final String eventType;
+  final int? combinedPoints;
 
   RaceAthleteResult({
     this.displayOrder = 0,
@@ -257,6 +258,7 @@ class RaceAthleteResult {
     this.bestMark,
     required this.status,
     required this.eventType,
+    this.combinedPoints,
   });
 
   factory RaceAthleteResult.fromJson(Map<String, dynamic> json) {
@@ -277,6 +279,7 @@ class RaceAthleteResult {
       bestMark: json['bestMark']?.toString(),
       status: json['status'] ?? true,
       eventType: json['eventType'] ?? '',
+      combinedPoints: json['combinedPoints'] as int?,
     );
   }
 
