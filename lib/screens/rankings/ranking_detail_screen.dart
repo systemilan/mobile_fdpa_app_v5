@@ -726,27 +726,35 @@ class _RankingDetailScreenState extends State<RankingDetailScreen>
                 Padding(
                   padding: const EdgeInsets.only(top: 5, left: 40),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Icon(Icons.emoji_events_outlined,
                           color: Colors.white24, size: 11),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          [
-                            if (entry.competitionName != null)
-                              entry.competitionName!,
-                            if (entry.formattedCompetitionDate != null)
-                              entry.formattedCompetitionDate!,
-                          ].join(' · '),
+                          entry.competitionName ?? '',
+                          style: const TextStyle(
+                            color: Colors.white24,
+                            fontSize: 10,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (entry.formattedCompetitionDate != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          entry.formattedCompetitionDate!,
                           style: const TextStyle(
                             color: Colors.white24,
                             fontSize: 10,
                             height: 1.3,
                           ),
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
+                      ],
                       // isManual badge
                       if (!entry.isManual) ...[
                         const SizedBox(width: 4),

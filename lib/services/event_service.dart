@@ -540,10 +540,12 @@ class EventService {
       await dio.download(
         url,
         filePath,
+        deleteOnError: true,
         options: Options(
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
           headers: {
-            'Content-Type': 'application/pdf',
-            'Accept': 'application/pdf',
+            'Accept': 'application/pdf, */*',
           },
         ),
       );

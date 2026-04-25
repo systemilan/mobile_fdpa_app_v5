@@ -362,10 +362,20 @@ class _AthleteSearchSheetState extends State<AthleteSearchSheet> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-
-              // Carril (si existe)
-              if (result.lane != null) ...[
-                const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                'Viento ${result.displayWind}',
+                style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 12,
+                ),
+              ),
+              const Spacer(),
+              if (result.lane != null)
                 Text(
                   'Carril ${result.lane}',
                   style: const TextStyle(
@@ -373,7 +383,6 @@ class _AthleteSearchSheetState extends State<AthleteSearchSheet> {
                     fontSize: 12,
                   ),
                 ),
-              ],
             ],
           ),
         ],

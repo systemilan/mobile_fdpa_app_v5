@@ -644,6 +644,34 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.15),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.air,
+                              color: Colors.white54, size: 11),
+                          const SizedBox(width: 4),
+                          Text(
+                            result.displayWind,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -719,16 +747,19 @@ class _GlobalAthleteSearchSheetState extends State<GlobalAthleteSearchSheet> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (result.lane != null) ...[
-                      const Spacer(),
-                      Text(
-                        s.laneLabel(result.lane!),
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 12),
-                      ),
-                    ],
                   ],
                 ),
+                if (result.lane != null) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      s.laneLabel(result.lane!),
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

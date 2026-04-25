@@ -255,6 +255,8 @@ class EventTestSearchResultData {
   final int? lane;
   final String? time;
   final String? bestMark;
+  final String? wind;
+  final List<String> winds;
   final String? athleteStatus;
   final String? eventType;
 
@@ -268,6 +270,8 @@ class EventTestSearchResultData {
     this.lane,
     this.time,
     this.bestMark,
+    this.wind,
+    this.winds = const [],
     this.athleteStatus,
     this.eventType,
   });
@@ -296,6 +300,15 @@ class EventTestSearchResultData {
   bool get isDNS =>
       athleteStatus != null && athleteStatus!.isNotEmpty && !hasResult;
 
+  /// Viento para UI (nuevo en backend): mostrar '-' cuando no existe
+  String get displayWind {
+    if (wind != null && wind!.trim().isNotEmpty) return wind!.trim();
+    for (final w in winds) {
+      if (w.trim().isNotEmpty) return w.trim();
+    }
+    return '-';
+  }
+
   factory EventTestSearchResultData.fromJson(Map<String, dynamic> json) {
     return EventTestSearchResultData(
       position: json['position'] as int?,
@@ -307,6 +320,11 @@ class EventTestSearchResultData {
       lane: json['lane'] as int?,
       time: json['time']?.toString(),
       bestMark: json['bestMark']?.toString(),
+      wind: json['wind']?.toString(),
+      winds: (json['winds'] as List<dynamic>?)
+              ?.map((e) => e?.toString() ?? '')
+              .toList() ??
+          const [],
       athleteStatus: json['athleteStatus']?.toString(),
       eventType: json['eventType']?.toString(),
     );
@@ -323,6 +341,8 @@ class AthleteSearchResultData {
   final int? lane;
   final String? time;
   final String? bestMark;
+  final String? wind;
+  final List<String> winds;
   final String? athleteStatus;
 
   const AthleteSearchResultData({
@@ -333,6 +353,8 @@ class AthleteSearchResultData {
     this.lane,
     this.time,
     this.bestMark,
+    this.wind,
+    this.winds = const [],
     this.athleteStatus,
   });
 
@@ -355,6 +377,15 @@ class AthleteSearchResultData {
     return team.replaceAll(RegExp(r'\s+-\s+'), ' / ').trim();
   }
 
+  /// Viento para UI (nuevo en backend): mostrar '-' cuando no existe
+  String get displayWind {
+    if (wind != null && wind!.trim().isNotEmpty) return wind!.trim();
+    for (final w in winds) {
+      if (w.trim().isNotEmpty) return w.trim();
+    }
+    return '-';
+  }
+
   factory AthleteSearchResultData.fromJson(Map<String, dynamic> json) {
     return AthleteSearchResultData(
       position: json['position'] as int?,
@@ -364,6 +395,11 @@ class AthleteSearchResultData {
       lane: json['lane'] as int?,
       time: json['time']?.toString(),
       bestMark: json['bestMark']?.toString(),
+      wind: json['wind']?.toString(),
+      winds: (json['winds'] as List<dynamic>?)
+              ?.map((e) => e?.toString() ?? '')
+              .toList() ??
+          const [],
       athleteStatus: json['athleteStatus']?.toString(),
     );
   }

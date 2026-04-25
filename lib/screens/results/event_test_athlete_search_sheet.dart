@@ -403,6 +403,14 @@ class _EventTestAthleteSearchSheetState
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  'Viento ${result.displayWind}',
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                  ),
+                ),
                 if (!hasMark && !isDNS)
                   const Text(
                     'Pendiente',

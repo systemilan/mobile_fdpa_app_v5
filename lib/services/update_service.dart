@@ -16,9 +16,7 @@ class UpdateService {
     // Solo funciona en Android real, no en emuladores ni web
     if (kIsWeb || !Platform.isAndroid) {
       developer.log('Verificación de actualizaciones no disponible en esta plataforma');
-      if (forceCheck) {
-        _showPlatformNotSupportedDialog(context);
-      }
+      // En iOS no mostrar ningún diálogo, simplemente ignorar
       return;
     }
 
