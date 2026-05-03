@@ -147,13 +147,16 @@ class CalendarActivity {
     }
   }
 
+  // Compara solo la parte de fecha, sin hora, para evitar desfases por horas parciales
+  static DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
   // Helper para verificar si es próximo (dentro de los próximos 60 días)
   bool get isUpcoming {
     try {
-      final now = DateTime.now();
-      final start = DateTime.parse(dateStart);
-      final difference = start.difference(now).inDays;
-      return difference >= 0 && difference <= 60;
+      final today = _dateOnly(DateTime.now());
+      final end = _dateOnly(DateTime.parse(dateEnd.isNotEmpty ? dateEnd : dateStart));
+      final start = _dateOnly(DateTime.parse(dateStart));
+      return !end.isBefore(today) && start.difference(today).inDays <= 60;
     } catch (e) {
       return false;
     }
@@ -162,9 +165,9 @@ class CalendarActivity {
   // Helper para verificar si ya pasó
   bool get isPast {
     try {
-      final now = DateTime.now();
-      final end = DateTime.parse(dateEnd);
-      return end.isBefore(now);
+      final today = _dateOnly(DateTime.now());
+      final end = _dateOnly(DateTime.parse(dateEnd.isNotEmpty ? dateEnd : dateStart));
+      return end.isBefore(today);
     } catch (e) {
       return false;
     }
@@ -181,12 +184,12 @@ class CalendarActivity {
     }
   }
 
-  // Helper para obtener días hasta el evento
+  // Helper para obtener días hasta el evento (positivo=futuro, 0=hoy, negativo=ya empezó)
   int get daysUntil {
     try {
-      final now = DateTime.now();
-      final start = DateTime.parse(dateStart);
-      return start.difference(now).inDays;
+      final today = _dateOnly(DateTime.now());
+      final start = _dateOnly(DateTime.parse(dateStart));
+      return start.difference(today).inDays;
     } catch (e) {
       return -1;
     }
@@ -194,13 +197,13 @@ class CalendarActivity {
 
   // Alias para compatibilidad con el código del home_screen
   int get daysUntilStart => daysUntil;
-  
-  // Helper para obtener días restantes del evento
+
+  // Helper para obtener días restantes del evento (0=termina hoy, negativo=ya terminó)
   int get daysRemaining {
     try {
-      final now = DateTime.now();
-      final end = DateTime.parse(dateEnd);
-      return end.difference(now).inDays;
+      final today = _dateOnly(DateTime.now());
+      final end = _dateOnly(DateTime.parse(dateEnd.isNotEmpty ? dateEnd : dateStart));
+      return end.difference(today).inDays;
     } catch (e) {
       return -1;
     }

@@ -1422,8 +1422,9 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
 
   Widget _buildOneCombinedSummary(CombinedSummary summary) {
     const double posW = 34.0;
-    const double nameW = 162.0;
-    const double countryW = 46.0;
+    const double minNameW = 162.0;
+    final bool showCountry = summary.athletes.any((a) => a.country.isNotEmpty);
+    final double countryW = showCountry ? 46.0 : 0.0;
     const double discW = 54.0;
     const double totalW = 68.0;
     const double rowH = 50.0;
@@ -1494,38 +1495,46 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
             ),
           ),
           // ── Tabla scrollable horizontalmente ──
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Cabecera
-                _buildCombinedTableHeader(
-                  summary,
-                  posW: posW,
-                  nameW: nameW,
-                  countryW: countryW,
-                  discW: discW,
-                  totalW: totalW,
-                  height: headerH,
-                ),
-                const Divider(color: Colors.white12, height: 1, thickness: 1),
-                // Filas de atletas
-                ...summary.athletes.map(
-                  (athlete) => _buildCombinedAthleteRow(
-                    athlete,
-                    summary.subTests,
-                    medalColor(athlete.finalPosition),
-                    posW: posW,
-                    nameW: nameW,
-                    countryW: countryW,
-                    discW: discW,
-                    totalW: totalW,
-                    height: rowH,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double fixedW = posW + countryW + discW * summary.subTests.length + totalW;
+              final double nameW = (constraints.maxWidth - fixedW).clamp(minNameW, double.infinity);
+              final double tableW = posW + nameW + countryW + discW * summary.subTests.length + totalW;
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableW,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCombinedTableHeader(
+                        summary,
+                        posW: posW,
+                        nameW: nameW,
+                        countryW: countryW,
+                        discW: discW,
+                        totalW: totalW,
+                        height: headerH,
+                      ),
+                      const Divider(color: Colors.white12, height: 1, thickness: 1),
+                      ...summary.athletes.map(
+                        (athlete) => _buildCombinedAthleteRow(
+                          athlete,
+                          summary.subTests,
+                          medalColor(athlete.finalPosition),
+                          posW: posW,
+                          nameW: nameW,
+                          countryW: countryW,
+                          discW: discW,
+                          totalW: totalW,
+                          height: rowH,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 8),
         ],
@@ -1574,7 +1583,7 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
               ),
             ),
           ),
-          cell('PAÍS', countryW),
+          if (countryW > 0) cell('PAÍS', countryW),
           ...summary.subTests.map(
             (st) => cell(st.shortLabel, discW),
           ),
@@ -1653,20 +1662,21 @@ class _ChampionshipDetailScreenState extends State<ChampionshipDetailScreen>
             ),
           ),
           // País
-          SizedBox(
-            width: countryW,
-            height: height,
-            child: Center(
-              child: Text(
-                athlete.country,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+          if (countryW > 0)
+            SizedBox(
+              width: countryW,
+              height: height,
+              child: Center(
+                child: Text(
+                  athlete.country,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
           // Celdas de disciplina
           ...subTests.map((st) {
             final result = athlete.subResults[st.eventTestId];

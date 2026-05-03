@@ -353,21 +353,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             );
           }).toList();
           
-          final now = DateTime.now();
-          
-          // Filtrar PRÓXIMOS eventos: de hoy en adelante + 15 días
-          final endDate = now.add(const Duration(days: 15));
+          final today = DateTime.now();
+          final todayDate = DateTime(today.year, today.month, today.day);
+
+          // Filtrar PRÓXIMOS: eventos que no han terminado y empiezan en <= 15 días
           final upcomingEvents = eventItems.where((event) {
             try {
-              final eventDate = DateTime.parse(event.dateStart);
-              // Incluir eventos que están entre hoy y 15 días adelante
-              return eventDate.isAfter(now.subtract(const Duration(days: 1))) && 
-                     eventDate.isBefore(endDate.add(const Duration(days: 1)));
+              final endRaw = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
+              final endDate = DateTime(endRaw.year, endRaw.month, endRaw.day);
+              final startRaw = DateTime.parse(event.dateStart);
+              final startDate = DateTime(startRaw.year, startRaw.month, startRaw.day);
+              return !endDate.isBefore(todayDate) && startDate.difference(todayDate).inDays <= 15;
             } catch (e) {
               return false;
             }
           }).toList();
-          
+
           // Ordenar próximos eventos por fecha (más cercanos primero)
           upcomingEvents.sort((a, b) {
             try {
@@ -376,12 +377,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return 0;
             }
           });
-          
-          // ÚLTIMOS RESULTADOS: todos los eventos ya terminados, sin límite de días
+
+          // ÚLTIMOS RESULTADOS: eventos cuyo dateEnd ya pasó (comparación de fecha-only)
           final allPastEvents = eventItems.where((event) {
             try {
-              final eventDate = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
-              return eventDate.isBefore(now.add(const Duration(days: 1)));
+              final endRaw = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
+              final endDate = DateTime(endRaw.year, endRaw.month, endRaw.day);
+              return endDate.isBefore(todayDate);
             } catch (e) {
               return false;
             }
@@ -415,21 +417,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         debugPrint('✅ Eventos cargados desde /events: ${response.data.length}');
         
         if (mounted) {
-          final now = DateTime.now();
-          
-          // Filtrar PRÓXIMOS eventos: de hoy en adelante + 15 días
-          final endDate = now.add(const Duration(days: 15));
+          final today2 = DateTime.now();
+          final todayDate2 = DateTime(today2.year, today2.month, today2.day);
+
+          // Filtrar PRÓXIMOS: eventos que no han terminado y empiezan en <= 15 días
           final upcomingEvents = response.data.where((event) {
             try {
-              final eventDate = DateTime.parse(event.dateStart);
-              // Incluir eventos que están entre hoy y 15 días adelante
-              return eventDate.isAfter(now.subtract(const Duration(days: 1))) && 
-                     eventDate.isBefore(endDate.add(const Duration(days: 1)));
+              final endRaw = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
+              final endDate = DateTime(endRaw.year, endRaw.month, endRaw.day);
+              final startRaw = DateTime.parse(event.dateStart);
+              final startDate = DateTime(startRaw.year, startRaw.month, startRaw.day);
+              return !endDate.isBefore(todayDate2) && startDate.difference(todayDate2).inDays <= 15;
             } catch (e) {
               return false;
             }
           }).toList();
-          
+
           // Ordenar próximos eventos por fecha (más cercanos primero)
           upcomingEvents.sort((a, b) {
             try {
@@ -438,12 +441,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return 0;
             }
           });
-          
-          // ÚLTIMOS RESULTADOS: todos los eventos ya terminados, sin límite de días
+
+          // ÚLTIMOS RESULTADOS: eventos cuyo dateEnd ya pasó (comparación de fecha-only)
           final allPastEvents2 = response.data.where((event) {
             try {
-              final eventDate = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
-              return eventDate.isBefore(now.add(const Duration(days: 1)));
+              final endRaw = DateTime.parse(event.dateEnd.isNotEmpty ? event.dateEnd : event.dateStart);
+              final endDate = DateTime(endRaw.year, endRaw.month, endRaw.day);
+              return endDate.isBefore(todayDate2);
             } catch (e) {
               return false;
             }
@@ -488,18 +492,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       debugPrint('✅ Actividades cargadas: ${response.total}');
       
       if (mounted) {
-        final now = DateTime.now();
-        
-        // Filtrar TODAS las actividades futuras sin límite de fecha
+        final calToday = DateTime.now();
+        final calTodayDate = DateTime(calToday.year, calToday.month, calToday.day);
+
+        // Filtrar TODAS las actividades que no han terminado aún
         final upcomingActivities = response.data
             .where((activity) {
               try {
-                final endDate = DateTime.parse(activity.dateEnd);
-                // Incluir TODOS los eventos que no han terminado aún
-                return endDate.isAfter(now.subtract(const Duration(days: 1)));
+                final endRaw = DateTime.parse(activity.dateEnd);
+                final endDate = DateTime(endRaw.year, endRaw.month, endRaw.day);
+                return !endDate.isBefore(calTodayDate);
               } catch (e) {
                 debugPrint('⚠️ Error parseando fecha: ${activity.dateEnd}');
-                return true; // Incluir si hay error en la fecha
+                return true;
               }
             })
             .toList();
@@ -2635,6 +2640,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     final days = activity.daysUntilStart;
+    final daysEnd = activity.daysRemaining;
 
     showModalBottomSheet(
       context: context,
@@ -2722,7 +2728,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(width: 16),
                         // Right: visual countdown block
-                        _buildCountdownBlock(days, accentColor),
+                        _buildCountdownBlock(days, daysEnd, accentColor),
                       ],
                     ),
 
@@ -2805,18 +2811,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildCountdownBlock(int days, Color accentColor) {
+  Widget _buildCountdownBlock(int days, int daysEnd, Color accentColor) {
     final String bigLabel;
     final String subLabel;
     final Color blockColor;
 
-    if (days < 0) {
+    if (daysEnd < 0) {
+      // El evento ya terminó
       bigLabel   = '–';
       subLabel   = 'Finalizado';
       blockColor = Colors.white24;
-    } else if (days == 0) {
-      bigLabel   = 'HOY';
-      subLabel   = '';
+    } else if (days <= 0) {
+      // Empezó y aún no termina = en curso
+      bigLabel   = 'EN';
+      subLabel   = 'CURSO';
       blockColor = const Color(0xFF5DCA88);
     } else if (days == 1) {
       bigLabel   = '1';

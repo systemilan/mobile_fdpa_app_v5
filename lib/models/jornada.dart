@@ -276,8 +276,8 @@ class CombinedSubTest {
     if (n.contains('5000')) return '5000';
     if (n.contains('triple')) return 'ST';
     if (n.contains('longitud') || n.contains('largo')) return 'SL';
+    if (n.contains('garrocha') || n.contains('pértiga')) return 'SG';
     if (n.contains('altura') || n.contains('alto')) return 'SA';
-    if (n.contains('garrocha') || n.contains('pértiga')) return 'GAR';
     if (n.contains('bala') || n.contains('impuls')) return 'BALA';
     if (n.contains('disco')) return 'DIS';
     if (n.contains('jabalina') || n.contains('javelin')) return 'JAB';

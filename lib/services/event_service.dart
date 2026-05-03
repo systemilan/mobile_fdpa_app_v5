@@ -507,7 +507,7 @@ class EventService {
       }
 
       final dio = Dio();
-      final url = '$_baseUrl/public/calendar-activities/pdf';
+      final url = '$_baseUrl/calendar-activities/pdf/upcoming';
 
       if (Environment.enableLogs) {
         debugPrint('🌐 Downloading Calendar PDF from: $url');
@@ -537,7 +537,7 @@ class EventService {
       final filePath = '${directory.path}/$fileName';
 
       // Descargar el archivo
-      await dio.download(
+      final response = await dio.download(
         url,
         filePath,
         deleteOnError: true,
@@ -549,6 +549,14 @@ class EventService {
           },
         ),
       );
+
+      // Verificar que realmente se recibió un PDF (404 devuelve JSON)
+      if (response.statusCode == 404) {
+        // Borrar el archivo JSON descargado por error
+        final f = File(filePath);
+        if (await f.exists()) await f.delete();
+        throw Exception('No hay actividades públicas para el año actual');
+      }
 
       if (Environment.enableLogs) {
         debugPrint('✅ Calendar PDF downloaded successfully: $filePath');
