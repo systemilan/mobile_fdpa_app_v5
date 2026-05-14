@@ -241,6 +241,11 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
     final country     = id?.country ?? '';
     final club        = id?.club ?? '';
 
+    // Split: first 2 words = nombres, rest = apellidos
+    final words    = displayName.trim().split(RegExp(r'\s+'));
+    final nameLine1 = _titleCase(words.take(2).join(' '));
+    final nameLine2 = words.length > 2 ? _titleCase(words.skip(2).join(' ')) : '';
+
     int? age;
     String? birthStr;
     final birthRaw = id?.birthDate;
@@ -268,32 +273,32 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withOpacity(0.15),
-              Colors.black.withOpacity(0.55),
+              Colors.black.withOpacity(0.25),
+              Colors.black.withOpacity(0.65),
               _bg,
             ],
-            stops: const [0.0, 0.55, 1.0],
+            stops: const [0.0, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── top bar ─────────────────────────────────────────────
+                // ── top bar ──────────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
-                        width: 40, height: 40,
+                        width: 38, height: 38,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                        child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
                       ),
                     ),
                     Row(
@@ -302,87 +307,90 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
                           borderRadius: BorderRadius.circular(4),
                           child: Image.asset('assets/images/fdpa_logo.png', width: 28, height: 34, fit: BoxFit.cover),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Federación Peruana', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600, height: 1.2)),
-                            Text('de Atletismo',       style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w400, height: 1.2)),
+                            Text('Federación Deportiva',   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600, height: 1.2)),
+                            Text('Peruana de Atletismo',   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w400, height: 1.2)),
                           ],
                         ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                // ── main content ─────────────────────────────────────────
+                const SizedBox(height: 18),
+                // ── nombre + bandera ──────────────────────────────────────
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left: name + gender + category + age
+                    // Izquierda: 2 nombres / 2 apellidos / nacimiento
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            _titleCase(displayName),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              height: 1.15,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          if (gender.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(gender, style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 13)),
-                          ],
-                          if (category.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              category.toUpperCase(),
-                              style: const TextStyle(
-                                color: _accent,
-                                fontSize: 38,
-                                fontWeight: FontWeight.w900,
-                                height: 1,
-                                letterSpacing: -1,
-                              ),
-                            ),
-                          ],
-                          if (age != null) ...[
-                            const SizedBox(height: 4),
-                            Text('$age años', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                          Text(nameLine1,
+                              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, height: 1.05, letterSpacing: -0.5, decoration: TextDecoration.none)),
+                          if (nameLine2.isNotEmpty)
+                            Text(nameLine2,
+                                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, height: 1.05, letterSpacing: -0.5, decoration: TextDecoration.none)),
+                          if (birthStr != null) ...[
+                            const SizedBox(height: 8),
+                            Text('Nacimiento: $birthStr',
+                                style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, fontWeight: FontWeight.w500)),
                           ],
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Right: flag + club·country + birth
-                    if (country.isNotEmpty || birthStr != null)
+                    // Derecha: bandera + club·país
+                    if (country.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          if (country.isNotEmpty) ...[
-                            _buildFlagWidget(country),
-                            const SizedBox(height: 6),
-                            Text(
-                              club.isNotEmpty ? '$club · $country' : country,
-                              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                          if (birthStr != null) ...[
-                            const SizedBox(height: 16),
-                            Text('Nacimiento:', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 11)),
-                            const SizedBox(height: 2),
-                            Text(birthStr, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                          ],
+                          _buildFlagWidget(country),
+                          const SizedBox(height: 5),
+                          Text(
+                            club.isNotEmpty ? '$club · $country' : country,
+                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                   ],
                 ),
+                // ── categoría + género + edad ─────────────────────────────
+                if (category.isNotEmpty || gender.isNotEmpty || age != null) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (category.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00BCD4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            category.toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                          ),
+                        ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (gender.isNotEmpty)
+                            Text(gender, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                          if (age != null)
+                            Text('$age años', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -392,6 +400,29 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
   }
 
   // ── Stats row ─────────────────────────────────────────────────────────────
+
+  Widget _buildMarkRow({required String label, required String mark, required Color color, double fontSize = 24}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 28,
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          mark,
+          style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w800, height: 1),
+        ),
+      ],
+    );
+  }
 
   Widget _buildStatsRow() {
     final marks = _profile?.bestMarks ?? [];
@@ -419,54 +450,20 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _shortDiscipline(m.discipline),
-                    style: TextStyle(color: Colors.white.withOpacity(0.38), fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.6),
+                    _titleCase(m.discipline),
+                    style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 11, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 10),
                   if (hasSb)
-                    IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // PB
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('PB', style: TextStyle(color: _green.withOpacity(0.7), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  m.mark,
-                                  style: TextStyle(color: _green, fontSize: m.mark.length > 5 ? 20 : 26, fontWeight: FontWeight.w800, height: 1),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Divider
-                          Container(width: 1, height: 36, color: Colors.white.withOpacity(0.08)),
-                          const SizedBox(width: 12),
-                          // SB
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('SB', style: const TextStyle(color: Color(0xFF64B5F6), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  m.sb!.mark,
-                                  style: TextStyle(color: const Color(0xFF64B5F6), fontSize: m.sb!.mark.length > 5 ? 16 : 20, fontWeight: FontWeight.w700, height: 1),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        _buildMarkRow(label: 'PB', mark: m.mark, color: _green),
+                        Container(width: 1, height: 28, color: Colors.white.withOpacity(0.1), margin: const EdgeInsets.symmetric(horizontal: 12)),
+                        _buildMarkRow(label: 'SB', mark: m.sb!.mark, color: const Color(0xFF64B5F6)),
+                      ],
                     )
                   else
-                    Text(
-                      m.mark,
-                      style: TextStyle(color: _green, fontSize: m.mark.length > 5 ? 22 : 28, fontWeight: FontWeight.w800, height: 1),
-                    ),
+                    _buildMarkRow(label: 'PB', mark: m.mark, color: _green),
                 ],
               ),
             ),
@@ -540,44 +537,20 @@ class _AthleteProfileScreenState extends State<AthleteProfileScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(right: 5, bottom: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF93).withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('PB', style: TextStyle(color: Color(0xFF4CAF93), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
-                      ),
-                      Text(m.mark, style: const TextStyle(color: Color(0xFF4CAF93), fontSize: 28, fontWeight: FontWeight.w800, height: 1)),
-                    ],
-                  ),
+                  _buildMarkRow(label: 'PB', mark: m.mark, color: _green, fontSize: 17),
                   if (wind != null)
-                    Text(wind, style: const TextStyle(color: Color(0xFF4CAF93), fontSize: 12, fontWeight: FontWeight.w600)),
-                  if (m.sb != null && m.sb!.mark.isNotEmpty && m.sb!.mark != m.mark && m.sb!.mark != '-') ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(right: 5, bottom: 1),
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF64B5F6).withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('SB', style: TextStyle(color: Color(0xFF64B5F6), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
-                        ),
-                        Text(m.sb!.mark, style: const TextStyle(color: Color(0xFF64B5F6), fontSize: 18, fontWeight: FontWeight.w700, height: 1)),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(wind, style: const TextStyle(color: Color(0xFF4CAF93), fontSize: 11, fontWeight: FontWeight.w600)),
                     ),
+                  if (m.sb != null && m.sb!.mark.isNotEmpty && m.sb!.mark != '-') ...[
+                    const SizedBox(height: 6),
+                    _buildMarkRow(label: 'SB', mark: m.sb!.mark, color: const Color(0xFF64B5F6), fontSize: 17),
                     if (m.sb!.wind != null && m.sb!.wind!.isNotEmpty && m.sb!.wind != 'null')
-                      Text(m.sb!.wind!, style: const TextStyle(color: Color(0xFF64B5F6), fontSize: 11, fontWeight: FontWeight.w600)),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(m.sb!.wind!, style: const TextStyle(color: Color(0xFF64B5F6), fontSize: 11, fontWeight: FontWeight.w600)),
+                      ),
                   ],
                 ],
               ),
