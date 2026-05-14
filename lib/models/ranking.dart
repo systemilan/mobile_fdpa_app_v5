@@ -59,6 +59,8 @@ class RankingMaster {
         return 'Sub 18';
       case 'U20':
         return 'Sub 20';
+      case 'U23':
+        return 'Sub 23';
       case 'MAYORES':
         return 'Mayores';
       default:

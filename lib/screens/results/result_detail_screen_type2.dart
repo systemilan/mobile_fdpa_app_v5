@@ -7,6 +7,7 @@ import '../../models/result_type1.dart';
 import '../../services/event_service.dart';
 import '../../services/socket_service.dart';
 import 'event_test_athlete_search_sheet.dart';
+import '../athlete/athlete_profile_screen.dart';
 
 class ResultDetailScreenType2 extends StatefulWidget {
   final String eventTestId;
@@ -875,15 +876,28 @@ class _ResultDetailScreenType2State extends State<ResultDetailScreenType2>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Nombre del atleta
-                  Text(
-                    athlete.name,
-                    style: TextStyle(
-                      color: isDNS ? Colors.white60 : Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AthleteProfileScreen(
+                          athleteId: athlete.athleteId,
+                          name: athlete.name,
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      athlete.name,
+                      style: TextStyle(
+                        color: isDNS ? Colors.white60 : Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: (isDNS ? Colors.white60 : Colors.white).withOpacity(0.3),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   // Información adicional

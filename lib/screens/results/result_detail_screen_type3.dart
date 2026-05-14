@@ -7,6 +7,7 @@ import '../../models/result_type3.dart';
 import '../../services/event_service.dart';
 import '../../services/socket_service.dart';
 import 'event_test_athlete_search_sheet.dart';
+import '../athlete/athlete_profile_screen.dart';
 
 class ResultDetailScreenType3 extends StatefulWidget {
   final String eventTestId;
@@ -859,15 +860,28 @@ class _ResultDetailScreenType3State extends State<ResultDetailScreenType3>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    athlete.name,
-                    style: TextStyle(
-                      color: isNoPosition ? Colors.white54 : Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AthleteProfileScreen(
+                          athleteId: athlete.athleteId,
+                          name: athlete.name,
+                        ),
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      athlete.name,
+                      style: TextStyle(
+                        color: isNoPosition ? Colors.white54 : Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: (isNoPosition ? Colors.white54 : Colors.white).withOpacity(0.3),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (!isNoPosition) ...[
                     const SizedBox(height: 4),

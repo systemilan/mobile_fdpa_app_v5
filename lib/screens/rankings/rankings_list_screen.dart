@@ -31,8 +31,17 @@ class _RankingsListScreenState extends State<RankingsListScreen>
   List<int> _years = [];
   int? _selectedYear;
 
-  // Orden deseado de categorías
-  static const List<String> _categoryOrder = ['U18', 'U20', 'MAYORES'];
+  // Orden de presentación preferido; categorías extra de la API se añaden al final
+  static const List<String> _preferredCategoryOrder = ['U18', 'U20', 'U23', 'MAYORES'];
+
+  List<String> get _categoryOrder {
+    final cats = _filteredRankings.map((r) => r.category).toSet();
+    final ordered = _preferredCategoryOrder.where(cats.contains).toList();
+    for (final cat in cats) {
+      if (!ordered.contains(cat)) ordered.add(cat);
+    }
+    return ordered;
+  }
 
   @override
   void initState() {
@@ -616,14 +625,11 @@ class _RankingsListScreenState extends State<RankingsListScreen>
 
   String _categoryLabelOf(String category) {
     switch (category) {
-      case 'U18':
-        return 'Sub 18';
-      case 'U20':
-        return 'Sub 20';
-      case 'MAYORES':
-        return 'Mayores';
-      default:
-        return category;
+      case 'U18': return 'Sub 18';
+      case 'U20': return 'Sub 20';
+      case 'U23': return 'Sub 23';
+      case 'MAYORES': return 'Mayores';
+      default: return category;
     }
   }
 
@@ -631,6 +637,7 @@ class _RankingsListScreenState extends State<RankingsListScreen>
     switch (category) {
       case 'U18': return 'U18';
       case 'U20': return 'U20';
+      case 'U23': return 'U23';
       case 'MAYORES': return 'MAY';
       default: return category;
     }

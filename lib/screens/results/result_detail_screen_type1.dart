@@ -7,6 +7,7 @@ import '../../services/event_service.dart';
 import '../../services/socket_service.dart';
 import '../../models/result_type2.dart';
 import 'event_test_athlete_search_sheet.dart';
+import '../athlete/athlete_profile_screen.dart';
 
 class ResultDetailScreenType1 extends StatefulWidget {
   final String eventTestId;
@@ -818,15 +819,28 @@ class _ResultDetailScreenType1State extends State<ResultDetailScreenType1>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Nombre del atleta
-                  Text(
-                    athlete.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AthleteProfileScreen(
+                          athleteId: athlete.athleteId,
+                          name: athlete.name,
+                        ),
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      athlete.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.white30,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   // Primera fila: R1, R2, R3
